@@ -202,7 +202,7 @@ args:
 ### 4.1 發佈前檢查清單
 
 - [x] `LICENSE`（MIT）注入 repo 根目錄（2026-10-13 已完成；npm 自動收入 tarball，無需加 `files`）
-- [ ] `mcp/` 絕對路徑 → `!!js` baseUrl 寫法（§3.5 已實驗定案：schema 支援、dump-config 掛載通過），乾淨機器啟動實測一次
+- [x] `mcp/` 絕對路徑 → 可攜 `!!js` 寫法（`process.execPath` ＋ `baseUrl`；實測見 ops-lessons rule 14），已於 0.2.0-alpha.9 上線並經 registry 實裝驗證
 - [x] 升級 `lib/index.js` frontmatter 解析器支援多行 `description`（§3.5 硬約束 1，vendor 前置）——2026-10-13 完成（引號剝除＋塊純量＋容錯，`__test` 回歸全綠）
 - [x] 精選技能入包：每技能授權檔隨行＋README 署名表；與官方 office skills 去重（§3.5）——2026-10-13 完成（superpowers 6 技能）
 - [x] package.json 加 `engines.dsh`（`"dsh": ">=0.2.0-rc.2"`；供市集顯示，core 不攔）
@@ -210,7 +210,7 @@ args:
 - [x] 確認零 install 期 scripts（`scripts` 僅含 `test`，非安裝期生命週期鉤子）
 - [ ] 換上正式品牌素材（`lib/client.js` 的 PRODUCT_NAME/mark/wordmark/色票，見 README 對照表）
 - [x] `pnpm pack` 乾檢：tarball 內容、`package.json` 的 `dsh.bundle.patch`/`dsh.client` 宣告無誤
-- [x] **npm 佔名發佈**：`dsh-general-agentics@0.1.0-alpha.1` 已上架（dist-tag `alpha`；因是首發版本，`latest` 亦暫指向它，發佈正式版時自然移動）。該版攜帶本機絕對路徑的 MCP row（後已修復），已 deprecate
+- [x] **npm 發佈**：`0.1.0-alpha.1` 佔名首發（攜帶本機絕對路徑的 MCP row，已 deprecate）；`0.2.0-alpha.9` 以 `--tag latest` 發佈取代之（prerelease 需顯式指定 tag，npm 會擋）。發佈後 registry 實裝驗證：`latest` 指向新版、全新 profile 以包名安裝 352 包、組合 row 各一次、啟動零失敗、ga-status 由該 profile 自身路徑 spawn、品牌 client half（含 attribution line 與 START HERE）送達正常。`alpha` dist-tag 仍指舊版（無害，下次發佈可順手 `npm dist-tag add <ver> alpha`）
 - [x] 乾淨 profile 實測四件事：tarball 安裝、Cmd+R 後品牌生效（瀏覽器實測：標題/favicon/manifest/slot/主色）、新 session 有 `ga-identity` 等 14 個技能與 `ga_bundle_info`（MCP stdio 實測）、解除安裝完全還原（deps/bundles/node_modules/組合/boot payload 全清）
 
 ### 4.2 CI/CD（GitHub Actions，tag 觸發）
