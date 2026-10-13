@@ -1,0 +1,4 @@
+node_modules/
+.understand-anything/
+*.tgz
+.DS_Store

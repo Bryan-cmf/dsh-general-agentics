@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 32" width="640" height="64">
+  <!-- General Agentics placeholder wordmark (text form).
+       The shipped sidebar wordmark is rendered as styled text by
+       lib/client.js (GAName); this file is the design-space reference.
+       When converting to official vector outlines, keep the mark-to-name
+       ratio used here and update GAName to render the SVG instead. -->
+  <g fill="currentColor">
+    <text x="0" y="24" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+          font-size="24" font-weight="600" letter-spacing="1.4">General Agentics</text>
+  </g>
+</svg>

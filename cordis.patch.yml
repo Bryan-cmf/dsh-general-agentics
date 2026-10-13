@@ -1,0 +1,211 @@
+# dsh-general-agentics — bundle patch layer.
+#
+# Inserted when this package is listed in a profile's `dsh.profile.bundles`.
+# Layer order (docs/user/develop/basic/publish.md): base bundles → each
+# bundle in the list → the profile's own cordis.patch.yml → $DSH_HOME patch.
+# Later layers win per row id, and a user patch can always override any row
+# below — that is the upgrade-safety contract of this bundle.
+#
+# What this layer inserts:
+#   1. The bundle's own Loader entry. `dsh-client-modules` discovers browser
+#      bundles by scanning ACTIVE entries — an entry whose package declares
+#      `dsh.client` is what puts lib/client.js into window.__DSH_BOOT__ and
+#      behind /plugins/<id>/client.js. The host half of this same entry
+#      registers the bundled skills provider (office pattern).
+#   2. MCP pre-configuration: one @deepseek-ai/dsh-mcp-client row per server
+#      (same shape as the proven aoci-mcp-bundle). Curated third-party
+#      plugins ride along as package.json dependencies (pnpm installs them
+#      transitively into the profile). Note: the plugin-manager reconcile
+#      step (dsh-plugin-manager operations.js:44) only scans the profile's
+#      OWN top-level dependencies — transitive curated plugins are activated
+#      by explicit `- id:` insert rows in THIS file, not by reconcile.
+#
+# ─────────────────────────────────────────────────────────────────────────
+# MEASURED FACTS about this patch dialect (DSH 0.2.0-rc.2, verified 2026-10-13
+# by booting a throwaway `ga-test` host with a probe row; see docs/ops-lessons.md)
+#
+#   baseUrl        → the PROFILE directory as a file: URL, e.g.
+#                    file:///Users/x/.dsh/profiles/desktop/
+#                    NOT this package's directory. So a bundle-relative path is
+#                    `new URL('node_modules/<pkg>/…', baseUrl)`.
+#   process.execPath → the node binary running the host. Always correct;
+#                    never hardcode a node path (the previous
+#                    /opt/homebrew/bin/node broke on every non-Homebrew machine).
+#   process.cwd()  → wherever the host was started (measured /private/tmp from
+#                    a CLI launch, the profile dir from the desktop app).
+#                    UNRELIABLE — never use a bare relative path.
+#   `--dump-config` does NOT evaluate !!js; it echoes the raw expression. Only
+#   a real activation proves an expression works.
+#   anchorInsertedPluginNames (dsh-app-boot lib/index.js:3536) rewrites a
+#   relative `name:` into a file URL anchored beside the patch, but it never
+#   touches `config.*` — hence the !!js below.
+#
+# ⚠ insert DOES NOT DEDUPE. applyEntryPatches (dsh-app-boot lib/index.js:86-88)
+#   appends unconditionally and buildMap() overwrites the id map silently, so
+#   inserting a row for a plugin the profile already activates directly yields
+#   TWO live rows for the same plugin — no warning. Measured: a duplicate
+#   `- id: general-agentics` insert produced a second row in the composition.
+#   Consequence for curated-plugin rows: a user who already installed one of
+#   them directly must remove that direct install, or the plugin activates
+#   twice. See docs/packaging-and-installation-plan.md §3.4.
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Brand strategy note: this bundle does NOT disable `ui-brand-official`.
+# All three brand slots are `kind: single`, where a *lower* priority shadows
+# a higher one ("the cell's lowest live entry renders"; equal priority would
+# throw). The official occupants register at the default priority 0; the
+# browser half of this bundle registers at priority -1 and therefore wins —
+# leaving the official package enabled keeps the door open for upstream
+# changes and avoids fighting the base bundle's row.
+- insert:
+    - id: general-agentics
+      name: 'dsh-general-agentics'
+
+    # ga-status: reports this bundle's identity and contents so a user — or the
+    # agent itself — can verify the installation landed.
+    #
+    # failOnStartupError is deliberately ABSENT (schema default is false,
+    # dsh-mcp-client lib/index.js:788). Setting it true makes a server that
+    # cannot start throw out of apply() (lib/index.js:832), which fails the
+    # Loader entry — and a failed required entry stops the whole app
+    # (docs/ops-lessons.md rule 5). A status reporter is not worth that: if it
+    # cannot start, the right behaviour is one tool missing, not a dead app.
+    - id: mcp-ga-status
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ga-status
+        transport: stdio
+        command: !!js "process.execPath"
+        args:
+          # Portable: the host's own node + this package's installed location
+          # under the profile that activated us. decodeURIComponent so a profile
+          # path containing spaces survives. Caveat: on Windows URL.pathname
+          # yields "/C:/…"; if a Windows deployment appears, switch to a
+          # win32-aware expression.
+          - !!js "decodeURIComponent(new URL('node_modules/dsh-general-agentics/mcp/ga-status-server.mjs', baseUrl).pathname)"
+
+    # ─────────────────────────────────────────────────────────────────────
+    # 3. Curated third-party plugins.
+    #
+    # Every row below is copied VERBATIM from that package's own
+    # `dsh.bundle.patch` file, read out of the installed tree on 2026-10-13.
+    # Copying is the only option: a bundle cannot make the profile load
+    # another package's patch layer, because reconcile scans only the
+    # profile's OWN top-level dependencies (dsh-plugin-manager
+    # operations.js:44), and `cordis:include` takes an ENTRY list, not a
+    # patch list (dsh-app-boot lib/index.js:3040-3050, :3705-3711), so it
+    # cannot pull one in either.
+    #
+    # Consequence: when a curated plugin edits its own patch file, this copy
+    # drifts silently. `npm test` cannot catch that — re-run the composition
+    # check (docs/packaging-and-installation-plan.md §4.1) on every version
+    # bump of anything listed here.
+    #
+    # Deliberately NOT curated, because their patch layers do more than
+    # insert — which is a product decision, not a packaging one:
+    #   - @liustack/modsearch also overrides `- id: web` with
+    #     `searchProvider: modsearch`, i.e. it hijacks the app's web search
+    #     provider on the user's behalf.
+    #   - dsh-mobile disables the official `directory-picker` row, inserts 5
+    #     rows, and its !!js expressions call a `dshHomePath()` helper whose
+    #     availability in THIS patch's eval scope is unverified.
+    #
+    # EXCLUDED AFTER A FAILED BOOT TEST — dsh-computer-use@0.3.1:
+    #   It hard-depends on `@deepseek-ai/dsh-tools@0.1.2-rc.1` (an exact pin,
+    #   not a peer). Profiles use `nodeLinker: hoisted`, so that copy lands at
+    #   the profile root, the host's version check rejects it against dsh
+    #   0.2.0-rc.2 and DISABLES the `tools` row, and startup then fails with
+    #   "1 required plugin did not activate" — 27 plugins left waiting for the
+    #   tools service, including ours. Reproduced 2026-10-13 by installing the
+    #   packed tarball into a fresh profile: the app never came up.
+    #   The maintainer's own desktop profile survives this only because its
+    #   package.json carries a postinstall script that deletes
+    #   node_modules/@deepseek-ai/dsh-tools after every install. A bundle
+    #   cannot ship that workaround (it is profile config, and an install
+    #   script would break the zero-build-script constraint), so any customer
+    #   installing this bundle with dsh-computer-use in it would get a DSH
+    #   that does not start. Re-admit it only once upstream drops the old pin.
+    #
+    #   GENERAL RULE for every future candidate: a curated plugin must not
+    #   carry a hard `dependencies` entry on any @deepseek-ai/* core package.
+    #   Peers are survivable (profiles set autoInstallPeers: false and the
+    #   shared ~/.dsh/profiles/node_modules layer satisfies them); a pinned
+    #   core dependency is not, because hoisting puts it where the runtime
+    #   version check will find it.
+    # ─────────────────────────────────────────────────────────────────────
+    - id: modlens
+      name: '@liustack/modlens'
+
+    - id: xmanrui-dsh-im
+      name: '@xmanrui/dsh-im'
+
+    - id: cost-meter
+      name: dsh-cost-meter
+
+    - id: genui
+      name: '@changfenhuang/dsh-genui'
+
+    # Upstream ships this self-deduping guard: the row disables itself when
+    # another live entry already provides the same plugin. Keep it verbatim —
+    # this is the one curated plugin that already survives the double-insert
+    # hazard documented at the top of this file.
+    - id: better-sidebar
+      name: 'dsh-better-sidebar'
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)"
+
+    - id: dsh-context
+      name: dsh-context
+
+    - id: web-search-pro
+      name: dsh-web-search-pro
+
+    # Provisions a Python virtualenv (~25MB, needs `uv`) on first use and runs
+    # a browser daemon. Heavy but non-fatal: the row activates either way.
+    - id: dsh-browser-use
+      name: "@ricardochen1996/dsh-browser-use"
+      config:
+        mode: launch
+
+    # Two rows, remote half first — that is upstream's order and insertion
+    # order is load order.
+    - id: agency-agents-remote
+      name: '@michengai/dsh-agency-agents/remote'
+
+    - id: agency-agents
+      name: '@michengai/dsh-agency-agents'
+
+    - id: dsh-market
+      name: 'dshmarket'
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Curated plugins whose patch layers do more than insert. Added 2026-10-13
+    # on the maintainer's explicit decision; each is a product choice, so the
+    # behaviour it imposes is spelled out here.
+    # ─────────────────────────────────────────────────────────────────────
+
+    # modsearch installs and activates. NOTE: upstream's own patch also carries
+    # a non-insert row (`- id: web / config: {searchProvider: modsearch}`) that
+    # switches the app's search provider. That row is deliberately NOT copied:
+    # measured on DSH 0.2.0-rc.2, non-insert override rows inside ANY profile
+    # composition layer (bundle or profile) are applied against an EMPTY root
+    # (dsh-app-boot prepareProfilePatches, lib/index.js:2152), find no target,
+    # and materialise as an extra name-less row instead of merging — the base
+    # `web` row keeps `searchProvider: deepseek-official` either way. Copying
+    # it would add a dead duplicate without changing behaviour, so switching
+    # the provider stays a user-level decision.
+    - id: modsearch
+      name: '@liustack/modsearch'
+
+    # ─────────────────────────────────────────────────────────────────────
+    # dsh-mobile is EXCLUDED, measured 2026-10-13. Its mobile browse pair
+    # registers the `directoryPicker` service, and so does the official
+    # `directory-picker` row; upstream's own patch resolves that by DISABLING
+    # the official row. A bundle patch cannot disable a base row — non-insert
+    # rows are applied against an empty root (see the modsearch note above) —
+    # so curating dsh-mobile leaves both rows live: cordis throws
+    # 'service "directoryPicker" has been registered' and the OFFICIAL
+    # directory-picker entry fails to activate on every boot. A curated bundle
+    # must not ship a known-broken official feature, so dsh-mobile stays a
+    # direct, user-level install (where its own patch layer runs and the
+    # disable works) until upstream ships an insert-only form.
+    # ─────────────────────────────────────────────────────────────────────

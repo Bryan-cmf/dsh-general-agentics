@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="240" height="240" fill="none">
+  <!-- General Agentics placeholder mark: agent-graph triangle.
+       Source of truth for lib/client.js (GAMark) and the favicon.
+       Replace with official artwork, then mirror the paths into client.js. -->
+  <path d="M12 5 5 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M12 5 19 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M5 17.5h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <circle cx="12" cy="5" r="2.7" fill="currentColor"/>
+  <circle cx="5" cy="17.5" r="2.7" fill="currentColor"/>
+  <circle cx="19" cy="17.5" r="2.7" fill="currentColor"/>
+</svg>

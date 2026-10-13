@@ -1,0 +1,60 @@
+{
+  "name": "dsh-general-agentics",
+  "version": "0.2.0-alpha.9",
+  "description": "General Agentics distribution bundle for DeepSeek Harness (DSH): one install brings the General Agentics white-label brand, curated plugins, bundled skills, and MCP pre-configuration. Built on DeepSeek Harness (DSH).",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "engines": {
+    "dsh": ">=0.2.0-rc.2"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "files": [
+    "lib",
+    "brand",
+    "skills",
+    "mcp",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "cordis-plugin",
+    "dsh-plugin",
+    "dsh-bundle",
+    "white-label"
+  ],
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-modules"
+      ]
+    }
+  },
+  "dependencies": {
+    "@changfenhuang/dsh-genui": "0.11.4",
+    "@liustack/modlens": "3.26.6",
+    "@liustack/modsearch": "5.10.6",
+    "@michengai/dsh-agency-agents": "1.0.16",
+    "@ricardochen1996/dsh-browser-use": "0.5.1",
+    "@xmanrui/dsh-im": "4.38.1",
+    "dsh-better-sidebar": "0.25.0",
+    "dsh-context": "0.68.1",
+    "dsh-cost-meter": "1.8.23",
+    "dsh-web-search-pro": "0.2.1",
+    "dshmarket": "1.66.17"
+  }
+}
