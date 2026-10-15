@@ -83,3 +83,14 @@
     另：dsh-mobile 的 mobile-access 實際監聽埠存於**機器級**
     `~/.dsh/mobile-access/setup.json`（config 的 listenPort/listenHost 只是種子），
     同機多 profile 各跑一個 gateway 必然撞埠（一個 EADDRINUSE 警告，App 仍可啟動）。
+
+17. **自家策展 row 用獨立 id（`ga-` 前綴），不要沿用上游 id。**
+    用戶若已直裝同一插件，其自身 bundle patch 會再插一行；**兩行同 id 會讓設定頁
+    永遠寫不進 config**：`dsh-config-editor` 的驗證用 `find()`（取第一個同 id row，
+    lib/index.js:122），而 config override 合併進**最後一個**同 id row，兩者永不相等
+    → 拒寫並拋 `Configuration for "X" is overridden by a home patch or command-line
+    overlay`（訊息誤導：實際上可能根本沒有 home patch / CLI overlay）。
+    症狀：設定頁開得了但存不了，例如 Agency 專家永遠 0 enabled。
+    **宣告式去重做不到**：loader 按樹序逐個建立 entry，row 求值時看不到「之後才插入」
+    的重複（實測：我們的 row 求值時已有 189 個 entry，直裝那行還不存在）——
+    所以 `!!js` 自我守衛不可靠；正解是獨立 id ＋ 要求用戶移除直裝（rule 12）。

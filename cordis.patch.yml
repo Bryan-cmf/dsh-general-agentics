@@ -87,6 +87,23 @@
     # ─────────────────────────────────────────────────────────────────────
     # 3. Curated third-party plugins.
     #
+    # ROW IDS ARE PREFIXED `ga-` — deliberately NOT upstream's ids. A user may
+    # already have the same package installed directly, which inserts its own
+    # row; two rows sharing an id break every settings write, because the
+    # config editor verifies with find() (first row by id, dsh-config-editor
+    # lib/index.js:122) while a config override merges into the LAST duplicate.
+    # The write is then rejected with 'Configuration for "X" is overridden by
+    # a home patch or command-line overlay' and nothing can be saved — measured
+    # 2026-10-16 on the maintainer's desktop, which is how the Agency experts
+    # ended up stuck at 0 enabled. Distinct ids keep each id unambiguous.
+    #
+    # Full de-duplication is NOT achievable declaratively: loader entries are
+    # created in tree order, so a row's !!js config cannot see a duplicate that
+    # a later bundle patch inserts (measured: 189 entries existed when our row
+    # was evaluated; the later duplicate was absent). A user who already has a
+    # curated plugin should remove that direct install instead —
+    # docs/ops-lessons.md rule 12.
+    #
     # Every row below is copied VERBATIM from that package's own
     # `dsh.bundle.patch` file, read out of the installed tree on 2026-10-13.
     # Copying is the only option: a bundle cannot make the profile load
@@ -133,16 +150,16 @@
     #   core dependency is not, because hoisting puts it where the runtime
     #   version check will find it.
     # ─────────────────────────────────────────────────────────────────────
-    - id: modlens
+    - id: ga-modlens
       name: '@liustack/modlens'
 
-    - id: xmanrui-dsh-im
+    - id: ga-xmanrui-dsh-im
       name: '@xmanrui/dsh-im'
 
-    - id: cost-meter
+    - id: ga-cost-meter
       name: dsh-cost-meter
 
-    - id: genui
+    - id: ga-genui
       name: '@changfenhuang/dsh-genui'
 
     # Upstream ships this self-deduping guard: the row disables itself when
@@ -153,28 +170,28 @@
       name: 'dsh-better-sidebar'
       disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)"
 
-    - id: dsh-context
+    - id: ga-dsh-context
       name: dsh-context
 
-    - id: web-search-pro
+    - id: ga-web-search-pro
       name: dsh-web-search-pro
 
     # Provisions a Python virtualenv (~25MB, needs `uv`) on first use and runs
     # a browser daemon. Heavy but non-fatal: the row activates either way.
-    - id: dsh-browser-use
+    - id: ga-dsh-browser-use
       name: "@ricardochen1996/dsh-browser-use"
       config:
         mode: launch
 
     # Two rows, remote half first — that is upstream's order and insertion
     # order is load order.
-    - id: agency-agents-remote
+    - id: ga-agency-agents-remote
       name: '@michengai/dsh-agency-agents/remote'
 
-    - id: agency-agents
+    - id: ga-agency-agents
       name: '@michengai/dsh-agency-agents'
 
-    - id: dsh-market
+    - id: ga-dsh-market
       name: 'dshmarket'
 
     # ─────────────────────────────────────────────────────────────────────
@@ -191,7 +208,7 @@
     # override would then silently hit the duplicate instead of the real row.
     # That is exactly the bug this file shipped in 0.2.0-alpha.6..9 (both
     # override rows were mis-nested inside the insert list).
-    - id: modsearch
+    - id: ga-modsearch
       name: '@liustack/modsearch'
 
     # ─────────────────────────────────────────────────────────────────────
@@ -214,7 +231,7 @@
       name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
       disabled: !!js ctx.get('desktopRuntime')?.platform === 'win32'
 
-    - id: mobile-access
+    - id: ga-mobile-access
       name: dsh-mobile
       inject: [webServer, connection]
       config:
