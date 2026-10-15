@@ -274,3 +274,35 @@
 - id: directory-picker
   name: '@deepseek-ai/dsh-host-directory-picker-auto'
   disabled: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFAULT CONFIG — visual parity with the maintainer's deployment. Each row is
+# an override of a row inserted above (or of a base row from dsh-web-app), so a
+# user's own profile patch still wins: profile layers apply after bundle
+# layers. `config` replaces the target's WHOLE config, hence every key that
+# matters is restated. Drop any line here if a default is not wanted.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Transcript layout + the per-reply usage line (this is what makes
+# dsh-cost-meter visible; without it the plugin runs but shows nothing).
+- id: ui-chat
+  config:
+    transcriptView: standard
+    performanceUsage: detailed
+
+# Context panel: show the fleet tab.
+- id: ga-dsh-context
+  config:
+    fleetTab: show
+
+# GenUI cards section placement + prompt.
+- id: ga-genui
+  config:
+    sectionOrder: 80
+    sectionName: genui:cards
+    promptEnabled: true
+
+# Sidebar: keep the agent tool buttons reachable.
+- id: ga-better-sidebar
+  config:
+    agentOpenTools: true

@@ -4,10 +4,10 @@
 
 用戶先安裝 DSH，再安裝本套件，一次獲得：
 
-1. **貼牌**：側邊欄 mark/wordmark、對話首頁 hero 文字 logo、品牌主色、分頁標題、favicon（皆為執行期替換，不修改、不破壞已安裝的 DSH）
-2. **自帶技能**：`ga-identity`（教導 agent 以 General Agentics 身分自介與簽署產出）
-3. **MCP 預配置**：策劃中的 MCP 伺服器清單（見 `mcp/`）
-4. **精選第三方插件**：機制保留（依賴＋顯式 insert row 隨套件啟用）；目前策劃清單為空，profile 端另行精選安裝
+1. **貼牌**：側邊欄 mark/wordmark、對話首頁 hero 文字 logo 與致敬行、品牌主色、分頁標題、favicon、輸入框下方的 START HERE 模塊（皆為執行期替換，不修改、不破壞已安裝的 DSH）
+2. **自帶技能**：14 個（`ga-identity` ＋ 13 個方法論技能，見下）
+3. **MCP 預配置**：`ga-status`（`ga_bundle_info` 身分回報 ＋ `ga_health_check` 安裝健康自檢）
+4. **12 個精選第三方插件**：隨套件安裝並啟用（見「精選插件」一節）
 
 Built on DeepSeek Harness (DSH), MIT licensed.
 
@@ -113,6 +113,35 @@ dsh-general-agentics/
   ——15 個上游技能取 13；`using-superpowers`（其「任何回應前必查技能」規則與 `ga-identity` 的身分主導權衝突）與 `using-git-worktrees`（團隊 git 工作流）刻意不入，理由見 `skills/THIRD-PARTY.md`。
 
 **感謝**：Jesse Vincent (obra) 與 superpowers 貢獻者；詳見 `skills/THIRD-PARTY.md`。
+
+## 精選插件（curated plugins）
+
+隨套件安裝並自動啟用（`dependencies` ＋ `cordis.patch.yml` 的 insert row；row id 一律 `ga-` 前綴，避免與用戶直裝的同名插件撞 id）。
+
+| 插件 | 功能 | 需要什麼才會「看得見」 |
+|---|---|---|
+| `dshmarket` | 插件市集 | 設定 → Plugin Market |
+| `dsh-better-sidebar` | 側欄：檔案樹／編輯器／變更／任務／側聊 | 基本即有；`agentOpenTools` 預設已帶 |
+| `dsh-cost-meter` | 會話費用統計 | 每條回覆的用量行（本套件已預設 `performanceUsage: detailed`） |
+| `@changfenhuang/dsh-genui` | 回覆內嵌互動 UI 卡片 | 本套件已預設區塊位置與提示 |
+| `dsh-context` | 上下文洞察／管理 | 本套件已預設開啟 fleet 分頁 |
+| `@liustack/modsearch` | 免費網頁＋X 搜尋聚合 | 本套件已接管 `web` 的 `searchProvider`（用戶 profile patch 可改回） |
+| `dsh-web-search-pro` | 多引擎路由搜尋 | 立即可用 |
+| `@ricardochen1996/dsh-browser-use` | 瀏覽器自動化 | **需 `uv`**（首次自動建 Python venv ~25MB） |
+| `@michengai/dsh-agency-agents` | 331 位可召喚專家／專家團 | **專家與專家團預設停用**（上游 opt-in）：設定 → 专家 啟用；成員需一併啟用 |
+| `@xmanrui/dsh-im` | 微信／飛書／企微／釘釘／TG／Slack… 橋接 | **需 IM 應用憑證**，否則只有背景日誌 |
+| `@liustack/modlens` | 給純文字 LLM 的視覺能力 | **需 Antigravity CLI**（未隨包） |
+| `dsh-mobile` | 手機／局域網安全訪問、目錄選擇器 | 佔用一個 TCP 埠（預設 3443）；同機第二個 gateway 會撞埠 |
+
+## 安裝注意（常見「插件沒出現」的原因）
+
+1. **不要同時直裝這些插件**。若該 profile 已經直裝任一精選插件，它會出現**兩行 row、激活兩次**（`insert` 不去重），舊版還會讓設定頁完全存不進去。裝本套件前先移除直裝，或用 `ga_health_check` 檢查（見下）。
+2. **品牌外觀要重新整理頁面**（Cmd+R）才會載入；**技能與 MCP 工具只出現在新建的 session**。
+3. **缺外部條件不是壞掉**：`browser-use` 要 `uv`、`modlens` 要 Antigravity CLI、`dsh-im` 要 IM 憑證——裝了不會報錯，但功能不會出現。
+4. **專家團預設停用**是上游設計，要在 設定 → 专家 手動啟用（團隊與成員都要）。
+5. **Windows 提醒**：`cordis.patch.yml` 的 MCP row 用 `new URL(...).pathname`，Windows 上會得到 `/C:/…`；屆時 `ga-status` 起不來（非致命，工具消失），需改成 win32-aware 寫法。
+
+**自我診斷**：新 session 中請 agent 呼叫 `mcp__ga-status__ga_health_check`，它會回報套件版本、**哪些精選插件被直裝（重複）**、以及每個插件缺哪個外部條件與該怎麼做。
 
 ## 合規備忘
 
