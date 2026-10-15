@@ -73,3 +73,13 @@
 15. **`failOnStartupError` 預設是 `false`**（dsh-mcp-client lib/index.js:788）；
     寫 `true` 會讓連不上的 server 從 `apply()` 拋錯（:832）→ Loader entry 失敗 →
     可能整個 App 起不來（rule 5）。狀態回報類 server 一律不寫這行。
+
+16. **override row 必須放在 patch 檔頂層（`- insert:` 清單之外）。**
+    巢狀在 insert 裡的 `- id:` row 不是覆蓋，是被**插入的新 entry**（同名死 row）；
+    且 id 查找是「後者覆蓋」，之後任何 override 會默默打在死 row 上而非真目標。
+    實測（DSH 0.2.0-rc.2）：頂層 `- id: web / config: …` 正確合併進 base row
+    （config **整體替換**，其餘鍵要重述）；同一行巢狀進 insert 則 base 不變、
+    多出一行。帶不帶 `name` 皆可（name 是斷言，不是開關）。
+    另：dsh-mobile 的 mobile-access 實際監聽埠存於**機器級**
+    `~/.dsh/mobile-access/setup.json`（config 的 listenPort/listenHost 只是種子），
+    同機多 profile 各跑一個 gateway 必然撞埠（一個 EADDRINUSE 警告，App 仍可啟動）。

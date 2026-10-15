@@ -183,29 +183,77 @@
     # behaviour it imposes is spelled out here.
     # ─────────────────────────────────────────────────────────────────────
 
-    # modsearch installs and activates. NOTE: upstream's own patch also carries
-    # a non-insert row (`- id: web / config: {searchProvider: modsearch}`) that
-    # switches the app's search provider. That row is deliberately NOT copied:
-    # measured on DSH 0.2.0-rc.2, non-insert override rows inside ANY profile
-    # composition layer (bundle or profile) are applied against an EMPTY root
-    # (dsh-app-boot prepareProfilePatches, lib/index.js:2152), find no target,
-    # and materialise as an extra name-less row instead of merging — the base
-    # `web` row keeps `searchProvider: deepseek-official` either way. Copying
-    # it would add a dead duplicate without changing behaviour, so switching
-    # the provider stays a user-level decision.
+    # modsearch installs and activates; the TOP-LEVEL `- id: web` override at
+    # the BOTTOM of this file switches the app's search provider to it.
+    # Placing an override row correctly matters: a row nested inside this
+    # `- insert:` list becomes an INSERTED ENTRY (a dead duplicate), not an
+    # override — and because entry lookup keeps the LAST row per id, a later
+    # override would then silently hit the duplicate instead of the real row.
+    # That is exactly the bug this file shipped in 0.2.0-alpha.6..9 (both
+    # override rows were mis-nested inside the insert list).
     - id: modsearch
       name: '@liustack/modsearch'
 
     # ─────────────────────────────────────────────────────────────────────
-    # dsh-mobile is EXCLUDED, measured 2026-10-13. Its mobile browse pair
-    # registers the `directoryPicker` service, and so does the official
-    # `directory-picker` row; upstream's own patch resolves that by DISABLING
-    # the official row. A bundle patch cannot disable a base row — non-insert
-    # rows are applied against an empty root (see the modsearch note above) —
-    # so curating dsh-mobile leaves both rows live: cordis throws
-    # 'service "directoryPicker" has been registered' and the OFFICIAL
-    # directory-picker entry fails to activate on every boot. A curated bundle
-    # must not ship a known-broken official feature, so dsh-mobile stays a
-    # direct, user-level install (where its own patch layer runs and the
-    # disable works) until upstream ships an insert-only form.
+    # dsh-mobile. Its four rows follow below; the official `directory-picker`
+    # row is disabled by the TOP-LEVEL override at the bottom of this file,
+    # because the mobile browse pair registers the same `directoryPicker`
+    # service — leaving both live makes cordis throw
+    # 'service "directoryPicker" has been registered' and the official entry
+    # fails to activate (measured 2026-10-13).
     # ─────────────────────────────────────────────────────────────────────
+    # `disabled: !!js` rows mirror upstream's Windows guards verbatim;
+    # dshHomePath() is provided by the loader (dsh-app-boot lib/index.js:4071).
+    # The gateway starts disabled (initiallyEnabled: false), so installing
+    # this bundle opens no port.
+    - id: directory-picker-mobile-host
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+      disabled: !!js ctx.get('desktopRuntime')?.platform === 'win32'
+
+    - id: directory-picker-mobile-surface
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
+      disabled: !!js ctx.get('desktopRuntime')?.platform === 'win32'
+
+    - id: mobile-access
+      name: dsh-mobile
+      inject: [webServer, connection]
+      config:
+        setupFile: !!js dshHomePath('mobile-access/setup.json')
+        stateFile: !!js dshHomePath('mobile-access/devices.json')
+        controlFile: !!js dshHomePath('mobile-access/control.json')
+        customCssFile: !!js dshHomePath('mobile-access/mobile.css')
+        customScriptFile: !!js dshHomePath('mobile-access/mobile.js')
+        initiallyEnabled: false
+        listenHost: 127.0.0.1
+        listenPort: 3443
+        allowedCidrs: [127.0.0.0/8]
+        tls:
+          mode: disabled
+
+    # Keep long question titles and answer options in one card scrollport.
+    - id: dsh-ui-fixes
+      name: dsh-mobile-question-fixes
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOP-LEVEL OVERRIDE ROWS — patches applied BY ID against the composed tree,
+# NOT new entries. They must sit at column 0, OUTSIDE the `- insert:` list:
+# a row nested inside insert becomes a duplicate entry instead of an override
+# (and shadows later overrides, since id lookup keeps the last row). That
+# mis-nesting is exactly the bug this file shipped in 0.2.0-alpha.6..9.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Route the app's web search through modsearch (the maintainer's explicit
+# curation choice; a user's own profile patch layer applies after bundle
+# layers and can pin any provider back). config is replaced WHOLESALE, so
+# fetchProvider is restated to preserve the base value.
+- id: web
+  config:
+    searchProvider: modsearch
+    fetchProvider: http
+
+# Hand the directoryPicker service to dsh-mobile's browse pair (see the
+# dsh-mobile note above); without this the official row and the mobile pair
+# double-register the service and the official entry fails to activate.
+- id: directory-picker
+  name: '@deepseek-ai/dsh-host-directory-picker-auto'
+  disabled: true

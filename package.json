@@ -1,6 +1,6 @@
 {
   "name": "dsh-general-agentics",
-  "version": "0.2.0-alpha.9",
+  "version": "0.2.0-alpha.10",
   "description": "General Agentics distribution bundle for DeepSeek Harness (DSH): one install brings the General Agentics white-label brand, curated plugins, bundled skills, and MCP pre-configuration. Built on DeepSeek Harness (DSH).",
   "license": "MIT",
   "repository": {
@@ -62,6 +62,7 @@
     "dsh-better-sidebar": "0.25.0",
     "dsh-context": "0.68.1",
     "dsh-cost-meter": "1.8.23",
+    "dsh-mobile": "0.5.5",
     "dsh-web-search-pro": "0.2.1",
     "dshmarket": "1.66.17"
   }
