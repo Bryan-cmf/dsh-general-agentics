@@ -94,3 +94,16 @@
     **宣告式去重做不到**：loader 按樹序逐個建立 entry，row 求值時看不到「之後才插入」
     的重複（實測：我們的 row 求值時已有 189 個 entry，直裝那行還不存在）——
     所以 `!!js` 自我守衛不可靠；正解是獨立 id ＋ 要求用戶移除直裝（rule 12）。
+
+18. **不要對 profile 直接下 `pnpm install`；兩個 profile 的 store 設定不同。**
+    desktop 的 store 來自 `~/.npmrc` 的 `store-dir`（`~/.pnpm-store/v11/v10`），
+    但 **web profile 自己用 `pnpm-workspace.yaml` 的 `storeDir` 設成 profile 內的
+    `.pnpm-store/v10`** → 用同一個 pnpm 跑兩個 profile，其中一個必然
+    store 不符（`ERR_PNPM_UNEXPECTED_STORE` 之類）。
+    而且 desktop profile 由 Electron 管理，**必須先完全退出 App**。
+    正規化依賴請走 DSH 工具（plugin_manager / `dsh plugin add|remove`），
+    它會用正確的 pnpm 與 store；真要手動跑，一次只跑一個 profile、先退出 App，
+    並把輸出存檔（`pnpm install 2>&1 | tee /tmp/pnpm.log`）以便分辨
+    `ERR_PNPM_*`（真失敗）與 peer／build-script 警告（大量但無害）。
+    這兩個 profile 的 `autoInstallPeers: false` 會讓 pnpm 列出每一個未滿足的
+    peer，動輒數十行——那是警告牆，不是故障。
