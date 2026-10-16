@@ -7,7 +7,7 @@
 1. **貼牌**：側邊欄 mark/wordmark、對話首頁 hero 文字 logo 與致敬行、品牌主色、分頁標題、favicon、輸入框下方的 START HERE 模塊（皆為執行期替換，不修改、不破壞已安裝的 DSH）
 2. **自帶技能**：14 個（`ga-identity` ＋ 13 個方法論技能，見下）
 3. **MCP 預配置**：`ga-status`（`ga_bundle_info` 身分回報 ＋ `ga_health_check` 安裝健康自檢）
-4. **12 個精選第三方插件**：隨套件安裝並啟用（見「精選插件」一節）
+4. **13 個精選第三方插件**：隨套件安裝並啟用（見「精選插件」一節）
 
 Built on DeepSeek Harness (DSH), MIT licensed.
 
@@ -121,7 +121,8 @@ dsh-general-agentics/
 | 插件 | 功能 | 需要什麼才會「看得見」 |
 |---|---|---|
 | `dshmarket` | 插件市集 | 設定 → Plugin Market |
-| `dsh-better-sidebar` | 側欄：檔案樹／編輯器／變更／任務／側聊 | 基本即有；`agentOpenTools` 預設已帶 |
+| `dsh-better-sidebar` | 側欄：檔案樹／編輯器／變更／任務／側聊 | 基本即有；`agentOpenTools` 與 sentinel tab 已預設開啟（只新增，不動其他 tab） |
+| `dsh-sentinel` | 排程監看面板（BSD-3-Clause，隨包附授權） | 立即可用；better-sidebar 的 sentinel tab 已預設開啟 |
 | `dsh-cost-meter` | 會話費用統計 | 每條回覆的用量行（本套件已預設 `performanceUsage: detailed`） |
 | `@changfenhuang/dsh-genui` | 回覆內嵌互動 UI 卡片 | 本套件已預設區塊位置與提示 |
 | `dsh-context` | 上下文洞察／管理 | 本套件已預設開啟 fleet 分頁 |
