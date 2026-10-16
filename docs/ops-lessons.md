@@ -107,3 +107,31 @@
     `ERR_PNPM_*`（真失敗）與 peer／build-script 警告（大量但無害）。
     這兩個 profile 的 `autoInstallPeers: false` 會讓 pnpm 列出每一個未滿足的
     peer，動輒數十行——那是警告牆，不是故障。
+
+19. **把 `link:` 開發安裝升級為正式安裝（含 desktop profile 的完整流程）。**
+    症狀：bundle 說好隨附的插件「看不到」。原因不是插件壞了，而是
+    **pnpm 不會安裝 `link:` 依賴的依賴** —— 該 profile 只有使用者另行直裝的
+    那幾個插件可用（desktop 實測：13 個精選插件中 12 個是直裝，缺的
+    `dsh-sentinel` 就永遠不會出現）。
+    遷移步驟（desktop profile 專用，因為 `dsh plugin` 會拒絕它：
+    `profile "desktop" is managed exclusively by the Electron application`）：
+    1. 完全退出 App，備份 `package.json` 與 `pnpm-lock.yaml`；
+    2. 把 bundle 的 spec 從 `link:…` 改成 `file:/絕對路徑/<pkg>.tgz`
+       （或 registry 版本），**tarball 要放在 repo 之外**的穩定路徑，
+       否則清 `*.tgz` 會讓日後的 install 失敗；
+    3. `cd ~/.dsh/profiles/<p> && /opt/homebrew/bin/pnpm install`
+       —— desktop 的 store 來自 `~/.npmrc`，與 `.modules.yaml` 記錄相符；
+    4. 再把 12 個直裝從 `dependencies` 與 `dsh.profile.bundles` **一起**移除
+       （只移除依賴不夠：bundles 條目會讓插件自己的 patch 層再插一次 row），
+       再跑一次 pnpm install；插件仍以 bundle 的傳遞依賴身分留在
+       node_modules，所以模組照樣解析得到；
+    5. **檢查 profile 自己的 `cordis.patch.yml`**：指向舊 row id 的覆蓋行會
+       變成死行（實測 desktop 有 4 條），其中使用者的個人設定
+       （agency-agents 的 `enabled` 專家清單與 `enabledTeams`）會靜默失效。
+       把這些覆蓋行改指向 `ga-` 前綴的新 id，並**移除 `name:` 欄位**，
+       否則覆蓋行會用舊模組名把 row 的 `name` 一起蓋掉。
+    6. 無法用 CLI dump desktop profile 的組合（同樣被拒），改用等價複本驗證：
+       另建一個 profile 目錄，複製 `package.json` 與 `cordis.patch.yml`，
+       `node_modules` 用符號連結指向原 profile，再 `--dump-config`／啟動。
+    驗證要點：13/13 可解析、每個插件恰好一行 row、啟動 0 失敗、
+    `dsh-sentinel/client.js` 出現在 boot payload、面板端點回報「未提供: 0」。
