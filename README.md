@@ -140,7 +140,7 @@ dsh-general-agentics/
 設定側欄多一個 **General Agentics** 分頁，回答「這個 bundle 到底裝了什麼、要不要更新」：
 
 - **bundle 版本**：目前版本 vs registry 最新版（本地開發版領先 registry 時會標「本地版本領先 registry」而不是誤報有更新）
-- **13 個精選插件**：每個的宣告範圍、**實際已安裝版本**、registry 最新版，以及 `有新版` / `最新` / `未提供` 標記
+- **13 個精選插件**：每個的宣告範圍、**實際已安裝版本**、registry 最新版，以及 `有新版` / `最新` / `未提供` / `直裝重複` 標記（後者代表這個 profile 又直裝了一份，會啟用兩次）
 - **14 個隨附技能**：名稱清單
 - **更新**：一鍵更新走 profile 的 plugin manager（`installBundle`）；沒有 manager 的 profile 會顯示可複製的手動指令。`link:`／`file:` 安裝會額外提示「更新會改用 registry 版本」
 

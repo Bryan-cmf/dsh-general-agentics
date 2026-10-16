@@ -255,3 +255,33 @@ test('registerStatusEndpoint: POST delegates to the plugin manager when present'
 	assert.equal(captured.body.restartRequired, true)
 	rmSync(root, { recursive: true, force: true })
 })
+
+test('buildStatus flags a curated plugin the profile also installs itself', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root7-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({
+		name: 'dsh-general-agentics',
+		version: '1.0.0',
+		dependencies: { 'double-plugin': '^1.0.0', 'single-plugin': '^1.0.0' },
+	}))
+	// the profile installs one of them directly as well — the coexistence case
+	// the ga- row ids exist for
+	const profile = makeProfile('coexist', {
+		dependencies: { 'dsh-general-agentics': 'file:./x.tgz', 'double-plugin': '^1.0.0' },
+	})
+	for (const name of ['double-plugin', 'single-plugin']) {
+		mkdirSync(join(profile, 'node_modules', name), { recursive: true })
+		writeFileSync(join(profile, 'node_modules', name, 'package.json'), JSON.stringify({ name, version: '1.0.0' }))
+	}
+	const status = await buildStatus({
+		root,
+		cwd: '/tmp',
+		resolve: () => ({ dir: profile, name: 'coexist', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({}),
+	})
+	const byName = Object.fromEntries(status.curated.map(plugin => [plugin.name, plugin]))
+	assert.equal(byName['double-plugin'].alsoDirect, true)
+	assert.equal(byName['single-plugin'].alsoDirect, false)
+	assert.deepEqual(status.profile.dependencies, ['dsh-general-agentics', 'double-plugin'])
+	rmSync(root, { recursive: true, force: true })
+	rmSync(profile, { recursive: true, force: true })
+})
