@@ -135,3 +135,29 @@
        `node_modules` 用符號連結指向原 profile，再 `--dump-config`／啟動。
     驗證要點：13/13 可解析、每個插件恰好一行 row、啟動 0 失敗、
     `dsh-sentinel/client.js` 出現在 boot payload、面板端點回報「未提供: 0」。
+
+20. **插件更新機制（實測，pnpm 10.33.2）——bundle 升版不會移動插件。**
+    | 動作 | 插件版本 |
+    |---|---|
+    | 全新安裝（`^x`） | 取範圍內最新 ✅ |
+    | 只升 bundle 版本、範圍不變 | **不動**（lock 已滿足） |
+    | 把 `~x.y.z` 放寬成 `^x.y.z` | **仍不動**（lock 已滿足新範圍） |
+    | **提高 floor**（讓已鎖定版不再滿足，如 `^3.27.1`） | **重解、跟著動** ✅ |
+    | profile 內 `pnpm update` | 全部升到範圍內最新 ✅ |
+    所以「一鍵更新 bundle 會連帶更新插件」**只有在該次發佈提高了對應 floor 時成立**。
+    另外 `^0.x.y` 依 semver **不含 minor**（`^0.68.1` = `>=0.68.1 <0.69.0`），
+    而 0.x 的 minor 正是上游還可能破壞的地方 → 0.x 插件的更新必須人工提 floor
+    並逐一驗證。用 `npm run check-upstream` 看清差距再決定。
+    驗證方法很重要：**不可以把新版直裝到已有本 bundle 的 profile**——那會造成
+    同一插件兩行 row、重複註冊，症狀看起來像「新版不相容」
+    （實測：`modsearch` 報 provider id 已註冊、`typert-loader` 爆棧、
+    11 個 entry 餓死）。正確做法是把 floor 寫成一個**測試 bundle**、
+    在乾淨 profile 安裝一次（每個插件只有一行）再啟動驗證。
+
+21. **上游改了附帶 entry 的模組名：dsh-mobile 0.6.x。**
+    dsh-mobile 的 question-fixes 子套件，0.5.x 用模組名 `dsh-mobile-question-fixes`，
+    0.6.x 改成相對**它自己** patch 檔的路徑 `./packages/question-fixes/lib/index.mjs`。
+    我們的 patch 錨定在自己的套件目錄，所以兩種版本都適用的寫法是
+    `./../dsh-mobile/packages/question-fixes/lib/index.mjs`
+    （hoisted 佈局下 `dsh-mobile` 與本套件是 node_modules 的兄弟；0.5.5 與 0.6.10 皆有此檔）。
+    不這樣寫的症狀：`dsh-ui-fixes (dsh-mobile-question-fixes): failed to import`。

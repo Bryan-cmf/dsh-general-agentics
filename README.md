@@ -142,7 +142,8 @@ dsh-general-agentics/
 - **bundle 版本**：目前版本 vs registry 最新版（本地開發版領先 registry 時會標「本地版本領先 registry」而不是誤報有更新）
 - **13 個精選插件**：每個的宣告範圍、**實際已安裝版本**、registry 最新版，以及 `有新版` / `最新` / `未提供` / `直裝重複` 標記（後者代表這個 profile 又直裝了一份，會啟用兩次）
 - **14 個隨附技能**：名稱清單
-- **更新**：一鍵更新走 profile 的 plugin manager（`installBundle`）；沒有 manager 的 profile 會顯示可複製的手動指令。`link:`／`file:` 安裝會額外提示「更新會改用 registry 版本」
+- **更新**：一鍵更新走 profile 的 plugin manager（`installBundle`）；沒有 manager 的 profile 會顯示可複製的手動指令（**desktop profile 的 CLI 被 Electron 獨佔，請用面板按鈕**）。`link:`／`file:` 安裝會額外提示「更新會改用 registry 版本」
+- **精選插件怎麼更新**：插件是上游 npm 套件的依賴，**bundle 升版本身不會移動插件版本**（pnpm 以 lock 為準）；只有當該次發佈**提高了 floor**（例如 `^0.68.1` → `^0.72.0`）時，一鍵更新才會把插件一起帶上去。發佈前用 `npm run check-upstream` 看差距，提 floor 後必須在乾淨 profile 驗證過再發（0.x 的 minor 依 semver 可能不相容）
 
 資料來自 host 半註冊的唯讀端點 `GET /api/general-agentics/status`（`?plugins=1` 才逐一查 registry，避免每次開面板都打 13 個請求）；`POST` 同一路徑才會實際觸發更新。registry 不可達時面板仍會渲染，只是版本欄顯示「未知」。
 

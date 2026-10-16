@@ -258,8 +258,14 @@
           mode: disabled
 
     # Keep long question titles and answer options in one card scrollport.
+    # dsh-mobile's companion entry. Upstream named it `dsh-mobile-question-fixes`
+    # up to 0.5.x and switched to a path relative to ITS OWN patch file in 0.6.x;
+    # our patch is anchored in our own package directory, so the portable spelling
+    # is the path that walks into the sibling package — valid in both layouts
+    # (verified: dsh-mobile/packages/question-fixes/lib/index.mjs exists in 0.5.5
+    # and 0.6.10).
     - id: dsh-ui-fixes
-      name: dsh-mobile-question-fixes
+      name: './../dsh-mobile/packages/question-fixes/lib/index.mjs'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TOP-LEVEL OVERRIDE ROWS — patches applied BY ID against the composed tree,
