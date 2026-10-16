@@ -7,7 +7,8 @@
 1. **貼牌**：側邊欄 mark/wordmark、對話首頁 hero 文字 logo 與致敬行、品牌主色、分頁標題、favicon、輸入框下方的 START HERE 模塊（皆為執行期替換，不修改、不破壞已安裝的 DSH）
 2. **自帶技能**：14 個（`ga-identity` ＋ 13 個方法論技能，見下）
 3. **MCP 預配置**：`ga-status`（`ga_bundle_info` 身分回報 ＋ `ga_health_check` 安裝健康自檢）
-4. **13 個精選第三方插件**：隨套件安裝並啟用（見「精選插件」一節）
+4. **設定面板**：Settings → General Agentics（bundle 版本、每個精選插件的版本與更新狀態、隨附技能、一鍵／手動更新）
+5. **13 個精選第三方插件**：隨套件安裝並啟用（見「精選插件」一節）
 
 Built on DeepSeek Harness (DSH), MIT licensed.
 
@@ -133,6 +134,17 @@ dsh-general-agentics/
 | `@xmanrui/dsh-im` | 微信／飛書／企微／釘釘／TG／Slack… 橋接 | **需 IM 應用憑證**，否則只有背景日誌 |
 | `@liustack/modlens` | 給純文字 LLM 的視覺能力 | **需 Antigravity CLI**（未隨包） |
 | `dsh-mobile` | 手機／局域網安全訪問、目錄選擇器 | 佔用一個 TCP 埠（預設 3443）；同機第二個 gateway 會撞埠 |
+
+## 設定面板（Settings → General Agentics）
+
+設定側欄多一個 **General Agentics** 分頁，回答「這個 bundle 到底裝了什麼、要不要更新」：
+
+- **bundle 版本**：目前版本 vs registry 最新版（本地開發版領先 registry 時會標「本地版本領先 registry」而不是誤報有更新）
+- **13 個精選插件**：每個的宣告範圍、**實際已安裝版本**、registry 最新版，以及 `有新版` / `最新` / `未提供` 標記
+- **14 個隨附技能**：名稱清單
+- **更新**：一鍵更新走 profile 的 plugin manager（`installBundle`）；沒有 manager 的 profile 會顯示可複製的手動指令。`link:`／`file:` 安裝會額外提示「更新會改用 registry 版本」
+
+資料來自 host 半註冊的唯讀端點 `GET /api/general-agentics/status`（`?plugins=1` 才逐一查 registry，避免每次開面板都打 13 個請求）；`POST` 同一路徑才會實際觸發更新。registry 不可達時面板仍會渲染，只是版本欄顯示「未知」。
 
 ## 安裝注意（常見「插件沒出現」的原因）
 
