@@ -162,13 +162,17 @@
     - id: ga-genui
       name: '@changfenhuang/dsh-genui'
 
-    # Upstream ships this self-deduping guard: the row disables itself when
-    # another live entry already provides the same plugin. Keep it verbatim —
-    # this is the one curated plugin that already survives the double-insert
-    # hazard documented at the top of this file.
-    - id: better-sidebar
+    # Row id is ga- prefixed like every other curated plugin (see the note at
+    # the top): upstream's own patch inserts `- id: better-sidebar` when the
+    # package is installed directly, and two rows sharing an id is what broke
+    # settings writes.
+    #
+    # Upstream's self-deduping guard is kept, with ONE deliberate edit: the id
+    # literal must name THIS row. Left as 'better-sidebar' the guard would match
+    # our own renamed row (same name, different id) and disable it forever.
+    - id: ga-better-sidebar
       name: 'dsh-better-sidebar'
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'better-sidebar' && !e.disabled)"
+      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'ga-better-sidebar' && !e.disabled)"
 
     - id: ga-dsh-context
       name: dsh-context
