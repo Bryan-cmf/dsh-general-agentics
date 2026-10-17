@@ -68,6 +68,21 @@
 | 快照 `GET /status` | 0.060s（第二次 0.002s） |
 | `GET /status?plugins=1` | 0.337s（第二次 **0.002s**，60s TTL） |
 
+視覺骨架：第一次請求在 3 秒延遲下，面板先畫出「Reading status…」＋三條 placeholder，
+而不是空盒子（`docs/img/panel-skeleton.png`）。
+
+**registry 不可達**（`DSH_GA_REGISTRY_URL=http://127.0.0.1:9` 啟動，該埠沒有服務）：
+
+| 檢查 | 結果 |
+|---|---|
+| 快照 payload | `current: 0.2.0-alpha.24`、`latest: undefined`、13 個 installed 有值、13 個 latest 無值 |
+| 面板 | 標題 chip **「Registry unreachable」**、BUNDLE 卡「Cannot reach the registry…」、`13 plugins · 14 skills`、13 列全部渲染 |
+| 每列徽章 | **13 個「Checking」、0 個「Latest」**（不謊報） |
+| 崩潰 | 無 |
+| 恢復正常 registry 後 | `latest: 0.2.0-alpha.22`、13/13 latest 有值 |
+
+截圖：`docs/img/panel-offline.png`。
+
 ## 8. 可移植性
 
 把 `dsh-mobile/packages/question-fixes/lib/index.mjs` 改名後啟動：**`failed to import: 0`**（row 由守衛停用），只有環境的埠衝突。

@@ -17,7 +17,10 @@ dependency ranges that the profile's package manager resolves.
   `window.__DSH_GA_DIAG__` counter makes that measurable.
 - Loading: the panel paints from a cheap snapshot first, then fills the plugin
   matrix; registry answers are cached for 60s. Measured: matrix request
-  0.337s → 0.002s on the second call.
+  0.337s → 0.002s on the second call. A skeleton renders while the first
+  snapshot is in flight, and an unreachable registry is stated as such instead
+  of claiming "latest" (13 rows say "Checking", none lie).
+- `DSH_GA_REGISTRY_URL` selects the registry base, for mirrors and offline runs.
 - Portability: the dsh-mobile companion row disables itself when its file is
   absent (isolated linker or an upstream layout change) instead of failing to
   import. A guard expression that does not parse is now a test failure.

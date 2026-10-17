@@ -357,3 +357,21 @@ test('fetchLatestVersion caches registry answers for the TTL', async () => {
 	await fetchLatestVersion('cached-plugin', { fetchImpl: counting, cache: false })
 	assert.equal(calls, 3)
 })
+
+test('buildStatus still answers when the registry is unreachable', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root9-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({
+		name: 'dsh-general-agentics', version: '1.2.3', dependencies: { 'some-plugin': '^1.0.0' },
+	}))
+	const status = await buildStatus({
+		root, cwd: '/tmp',
+		fetchImpl: async () => { throw new Error('offline') },
+	})
+	assert.equal(status.current, '1.2.3')
+	assert.equal(status.latest, undefined)
+	assert.equal(status.updateAvailable, false)
+	assert.equal(status.curated.length, 1)
+	assert.equal(status.curated[0].installed, undefined)
+	assert.equal(status.curated[0].latest, undefined)
+	rmSync(root, { recursive: true, force: true })
+})
