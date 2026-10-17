@@ -26,6 +26,10 @@ dependency ranges that the profile's package manager resolves.
 - Panel: status-first layout — state chip, last-checked time, 需要注意 card,
   filter chips and search, expandable rows with copy/npm actions, update
   progress with elapsed time and `aria-live`.
+- Internationalization: the panel renders in Chinese or English following the
+  browser language (overridable), from two dictionaries with an identical key
+  set; a structural test fails if a key is missing from either side or used
+  without a translation.
 
 ## 0.2.0-alpha.23
 

@@ -195,3 +195,28 @@
     而 store 變更會觸發「清空 node_modules」，非 TTY 下需要 `--config.confirmModulesPurge=false`。
     驗收：`.modules.yaml` 的 `storeDir` 應為 `~/Library/pnpm/store/v11`、
     `packageManager` 為 `pnpm@11.28.5`，且 `CI=true node "$APP_PNPM" install --frozen-lockfile` 應為 no-op。
+
+24. **會執行動作的寫入路由必須自己驗證來源。**
+    DSH 的 web server 上掛的路由會被 dsh-mobile（LAN／隧道）代理；我們最初只做 GET/POST
+    分流，任何能打到該 URL 的人都能觸發安裝。現在 POST 要求 same-origin 與一次性 token
+    （GET 下發、POST 以 `x-ga-csrf` 回送）；沒有 CORS 標頭，跨站頁面讀不到 token。
+    驗證方式：無 token／錯 token／`Sec-Fetch-Site: cross-site`／外站 `Origin` 都必須 403
+    且 profile 不被改動；合法請求才 200。
+
+25. **不要對 `document.body` 掛「每次變動都掃全文件」的 observer。**
+    原本的致敬行改寫在每個 mutation 都用 TreeWalker 掃整份文件；串流回覆時每個 token
+    都會觸發。改成：① MutationObserver 只處理**本次變動的子樹**（`addedNodes`／
+    `characterData` 的 target）② 反應以 `requestAnimationFrame` 合併，每 frame 最多一次。
+    實測 200 次同步 DOM 變動 → 1 次 flush（原本 200 次）。把計數器掛在
+    `window.__DSH_GA_DIAG__` 讓這個聲明可被複驗。
+
+26. **YAML 的 `!!js` 值不能以 `!` 開頭。**
+    `disabled: !!js !expr` 會被 YAML 解析成「第二個 tag」，整個 overlay 解析失敗，
+    plugin manager 直接**拒絕整個安裝**（而且 dump-config 不會評估運算式，肉眼難察）。
+    寫成 `expr === false` 或整段加引號。防線：測試會把每個單行 `!!js` 值當 JS 解析，
+    `prepublish-check` 用 runtime 的 js-yaml（註冊 DSH 的 `!!js` tag）實際解析 overlay；
+    故意弄壞時必須以非 0 結束。
+
+27. **面板一次要打 14 個 registry 查詢時：先畫快照、再補矩陣，並加 TTL 快取。**
+    實測：快照 0.060s、矩陣首次 0.337s、第二次 0.002s（60 秒 TTL）。
+    未知狀態要顯示「查詢中」而不是誤報「最新」。

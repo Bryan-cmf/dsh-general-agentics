@@ -164,7 +164,7 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 4. **精選插件**：依用途分組（搜尋／介面／行動／自家／通訊），可篩選（全部／有新版／需注意／未提供）與搜尋；每列可展開看宣告範圍、已裝與 registry 版本、落後原因、複製安裝指令與 npm 連結
 5. **隨附技能**與**前置條件**（無法隨 npm 套件提供的項目，標示已就緒／需自行確認）
 
-首次開啟會有一張可關閉的「這個 bundle 給了你什麼」引導卡。
+首次開啟會有一張可關閉的「這個 bundle 給了你什麼」引導卡。面板語言**跟隨瀏覽器**（zh/en，可用 `localStorage['general-agentics/lang']` 覆寫），所有字串來自兩份鍵集相同的字典。
 
 - **bundle 版本**：目前版本 vs registry 最新版（本地開發版領先 registry 時會標「本地版本領先 registry」而不是誤報有更新）
 - **13 個精選插件**：每個的宣告範圍、**實際已安裝版本**、registry 最新版，以及 `有新版` / `最新` / `未提供` / `直裝重複` 標記（後者代表這個 profile 又直裝了一份，會啟用兩次）
@@ -173,6 +173,15 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 - **精選插件怎麼更新**：插件是上游 npm 套件的依賴，**bundle 升版本身不會移動插件版本**（pnpm 以 lock 為準）；只有當該次發佈**提高了 floor**（例如 `^0.68.1` → `^0.72.0`）時，一鍵更新才會把插件一起帶上去。發佈前用 `npm run check-upstream` 看差距，提 floor 後必須在乾淨 profile 驗證過再發（0.x 的 minor 依 semver 可能不相容）
 
 資料來自 host 半註冊的唯讀端點 `GET /api/general-agentics/status`（`?plugins=1` 才逐一查 registry，避免每次開面板都打 13 個請求）；`POST` 同一路徑才會實際觸發更新。registry 不可達時面板仍會渲染，只是版本欄顯示「未知」。
+
+## 安全模型
+
+| 面向 | 做法 |
+|---|---|
+| 寫入路由 | `POST /api/general-agentics/status` 是唯一會執行安裝的端點。它要求 **same-origin**（`Sec-Fetch-Site`／`Origin` 與 `Host` 相符）＋ GET 下發的**每 process 一次性 token**（面板以 `x-ga-csrf` 回送）。沒有 CORS 標頭，跨站頁面讀不到 token；偽造的 `curl`、錯 token、跨站來源、外站 Origin 一律 403。 |
+| 讀取路由 | GET 只回版本與狀態；在 loopback 上運作，不寫入任何東西。 |
+| 安裝內容 | 所有插件都是上游 npm 套件（semver 範圍），本套件不含 fork／vendored 副本；`engines.dsh` 只用 `>=`。 |
+| 驗證 | `test/settings-panel.test.mjs` 有 `allowWrite` 與 403 的單元測試；每個發佈前跑 `npm run prepublish-check`（測試＋overlay YAML 解析）。 |
 
 ## 可選：需要風險豁免的插件（agency-agents）
 
