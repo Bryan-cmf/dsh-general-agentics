@@ -115,3 +115,26 @@ test('every single-line !!js expression parses as JavaScript', () => {
 	}
 	assert.ok(checked >= 3, `expected several !!js guards, checked ${checked}`)
 })
+
+test('the panel dictionaries share one key set and cover every used key', () => {
+	const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+	const start = source.indexOf('/* GA_I18N_START */')
+	const end = source.indexOf('/* GA_I18N_END */')
+	assert.ok(start > 0 && end > start, 'i18n sentinels missing')
+	const literal = source.slice(start + '/* GA_I18N_START */'.length, end)
+	const table = new Function(`${literal.trim()}\nreturn GA_I18N`)()
+	const zh = Object.keys(table.zh).sort()
+	const en = Object.keys(table.en).sort()
+	assert.deepEqual(en, zh, 'zh and en must declare the same keys')
+	for (const key of zh) {
+		assert.equal(typeof table.zh[key], 'string')
+		assert.ok(table.zh[key].length > 0, `zh.${key} is empty`)
+		assert.ok(table.en[key].length > 0, `en.${key} is empty`)
+	}
+	// every t('key') / tf('key') used in the panel must exist
+	const panel = source.slice(source.indexOf('function GASettingsPanel()'))
+	const used = new Set([...panel.matchAll(/\bt[f]?\('([a-z_]+)'/gu)].map(m => m[1]))
+	const missing = [...used].filter(key => !zh.includes(key))
+	assert.deepEqual(missing, [], `keys used but not translated: ${missing.join(', ')}`)
+	assert.ok(used.size > 40, `expected many translated strings, found ${used.size}`)
+})
