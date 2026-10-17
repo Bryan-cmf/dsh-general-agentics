@@ -174,6 +174,18 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 
 資料來自 host 半註冊的唯讀端點 `GET /api/general-agentics/status`（`?plugins=1` 才逐一查 registry，避免每次開面板都打 13 個請求）；`POST` 同一路徑才會實際觸發更新。registry 不可達時面板仍會渲染，只是版本欄顯示「未知」。
 
+## 開發與 CI
+
+```bash
+npm test                 # 61 個測試：組合一致性、端點授權、i18n 字典、MCP、面板 payload
+npm run ci               # 與 GitHub Actions 相同的閘門（測試 + 打包演練）
+npm run prepublish-check # 再加上 overlay 的 YAML 解析（發佈前自動執行）
+```
+
+`ci/github-actions.yml` 是這個 repo 的 workflow。它放在 `ci/` 而不是 `.github/workflows/`，
+因為推送 workflow 需要 token 的 `workflow` scope；啟用方式（CLI 一行或 GitHub 網頁貼上）
+寫在 `ci/README.md`。啟用前，`npm run ci` 提供等價的本地閘門。
+
 ## 安全模型
 
 | 面向 | 做法 |

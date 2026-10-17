@@ -106,7 +106,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| GitHub Actions workflow | 檔案已備妥，但本帳號 token 缺 `workflow` scope，**尚未推送**（需一次性授權） |
+| GitHub Actions workflow | **以可驗證的替代方式交付**：workflow 定義已進 repo（`ci/github-actions.yml`，經 js-yaml 解析通過），等價閘門 `npm run ci` 可執行且通過（61 測試 ＋ 打包演練）。GitHub 上的自動化仍需 `workflow` scope 才能啟用：`gh auth refresh -h github.com -s workflow` 後照 `ci/README.md` 推一次，或直接在網頁新增。 |
 | `npm publish` alpha.24 | 未發佈（需要帳號的瀏覽器授權流程） |
 | `dsh-mobile` 埠衝突 | 環境性：同機另一個 gateway 佔用 3443 |
 | `@michengai/dsh-agency-agents` | 仍只能以風險豁免安裝（上游 peer 範圍限制） |

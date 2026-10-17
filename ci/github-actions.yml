@@ -1,0 +1,38 @@
+# GitHub Actions CI for this bundle.
+#
+# This file lives in ci/ instead of .github/workflows/ because pushing a workflow
+# needs the token's `workflow` scope, which the account that publishes this
+# package does not grant by default. It is otherwise the exact workflow.
+#
+# To enable it, either:
+#
+#   gh auth refresh -h github.com -s workflow
+#   mkdir -p .github/workflows && cp ci/github-actions.yml .github/workflows/ci.yml
+#   git add .github/workflows/ci.yml && git commit -m "ci: enable GitHub Actions" && git push
+#
+# or paste this file into the repository's web UI at
+#   Actions → New workflow → "set up a workflow yourself"
+#
+# The same steps run locally with `npm run ci`.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit and structural tests
+        run: npm test
+      - name: The package must build a tarball
+        run: npm pack --dry-run

@@ -21,6 +21,9 @@ dependency ranges that the profile's package manager resolves.
   snapshot is in flight, and an unreachable registry is stated as such instead
   of claiming "latest" (13 rows say "Checking", none lie).
 - `DSH_GA_REGISTRY_URL` selects the registry base, for mirrors and offline runs.
+- Engineering: `npm run ci` runs the same gate as the GitHub Actions workflow;
+  the workflow itself is staged at `ci/github-actions.yml` with enablement
+  instructions (pushing `.github/workflows/` needs the token's workflow scope).
 - Portability: the dsh-mobile companion row disables itself when its file is
   absent (isolated linker or an upstream layout change) instead of failing to
   import. A guard expression that does not parse is now a test failure.
