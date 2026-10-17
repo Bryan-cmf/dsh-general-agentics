@@ -272,8 +272,13 @@
     # is the path that walks into the sibling package — valid in both layouts
     # (verified: dsh-mobile/packages/question-fixes/lib/index.mjs exists in 0.5.5
     # and 0.6.10).
+    # The companion entry is a path inside the sibling package, which only exists
+    # with the hoisted linker DSH's profiles use. Disable the row when the file is
+    # absent instead of failing to import (an isolated-linker profile, or an
+    # upstream layout change, should degrade to "no UI fixes", not to a boot error).
     - id: dsh-ui-fixes
       name: './../dsh-mobile/packages/question-fixes/lib/index.mjs'
+      disabled: !!js "(() => { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const url = process.getBuiltinModule('node:url'); const dir = url.fileURLToPath(baseUrl); return !fs.existsSync(path.join(dir, 'node_modules', 'dsh-mobile', 'packages', 'question-fixes', 'lib', 'index.mjs')) })()"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TOP-LEVEL OVERRIDE ROWS — patches applied BY ID against the composed tree,

@@ -15,8 +15,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+	allowWrite,
 	buildStatus,
 	compareSemver,
+	fetchLatestVersion,
 	installedVersion,
 	profileNameFromDir,
 	profileSpecFor,
@@ -214,6 +216,26 @@ test('registerStatusEndpoint: GET returns status, unknown methods are rejected',
 	rmSync(root, { recursive: true, force: true })
 })
 
+
+/** Perform the panel's two-step write: GET for the token, POST with it. */
+async function postWithToken(mounted, headers = {}) {
+	let csrf
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, {
+		writeHead: () => {},
+		end: body => { csrf = JSON.parse(body).csrf },
+	})
+	let captured
+	await mounted.handler({
+		method: 'POST',
+		url: '/api/general-agentics/status',
+		headers: { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf, ...headers },
+	}, {
+		writeHead: status => { captured = { status } },
+		end: body => { captured.body = JSON.parse(body) },
+	})
+	return captured
+}
+
 test('registerStatusEndpoint: POST without a plugin manager hands back the command', async () => {
 	const root = mkdtempSync(join(tmpdir(), 'ga-root5-'))
 	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
@@ -221,11 +243,7 @@ test('registerStatusEndpoint: POST without a plugin manager hands back the comma
 	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : undefined) }
 	// the panel asks the registry what is current before touching the manager
 	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
-	let captured
-	await mounted.handler({ method: 'POST', url: '/api/general-agentics/status' }, {
-		writeHead: status => { captured = { status } },
-		end: body => { captured.body = JSON.parse(body) },
-	})
+	const captured = await postWithToken(mounted)
 	assert.equal(captured.status, 200)
 	assert.equal(captured.body.ok, false)
 	assert.equal(captured.body.manual, true)
@@ -249,11 +267,7 @@ test('registerStatusEndpoint: POST delegates to the plugin manager when present'
 	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : name === 'pluginManager' ? manager : undefined) }
 	// the panel asks the registry what is current before touching the manager
 	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
-	let captured
-	await mounted.handler({ method: 'POST', url: '/api/general-agentics/status' }, {
-		writeHead: status => { captured = { status } },
-		end: body => { captured.body = JSON.parse(body) },
-	})
+	const captured = await postWithToken(mounted)
 	assert.deepEqual(asked, ['remove:dsh-general-agentics', 'dsh-general-agentics@1.2.4'])
 	assert.equal(captured.status, 200)
 	assert.equal(captured.body.ok, true)
@@ -289,4 +303,57 @@ test('buildStatus flags a curated plugin the profile also installs itself', asyn
 	assert.deepEqual(status.profile.dependencies, ['dsh-general-agentics', 'double-plugin'])
 	rmSync(root, { recursive: true, force: true })
 	rmSync(profile, { recursive: true, force: true })
+})
+
+test('allowWrite: the panel token is required and checked', () => {
+	const token = 'abc123'
+	assert.equal(allowWrite({ headers: { 'x-ga-csrf': token } }, token), true)
+	// no token at all (a blind curl)
+	assert.equal(allowWrite({ headers: {} }, token), false)
+	// wrong token
+	assert.equal(allowWrite({ headers: { 'x-ga-csrf': 'nope' } }, token), false)
+	// right token, but the browser says the request came from another site
+	assert.equal(allowWrite({ headers: { 'x-ga-csrf': token, 'sec-fetch-site': 'cross-site' } }, token), false)
+	// right token, but an Origin for another host
+	assert.equal(allowWrite({ headers: { 'x-ga-csrf': token, host: 'localhost:3000', origin: 'https://evil.example' } }, token), false)
+	// a same-origin fetch from our own page
+	assert.equal(allowWrite({ headers: { 'x-ga-csrf': token, host: 'localhost:3000', origin: 'http://localhost:3000', 'sec-fetch-site': 'same-origin' } }, token), true)
+})
+
+test('registerStatusEndpoint: a write without the token is refused before any install', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root8-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const asked = []
+	const manager = {
+		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
+		installBundle: async spec => { asked.push(spec); return { application: 'applied' } },
+	}
+	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : name === 'pluginManager' ? manager : undefined) }
+	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
+	let captured
+	await mounted.handler({ method: 'POST', url: '/api/general-agentics/status', headers: {} }, {
+		writeHead: status => { captured = { status } },
+		end: body => { captured.body = JSON.parse(body) },
+	})
+	assert.equal(captured.status, 403)
+	assert.equal(captured.body.code, 'forbidden')
+	assert.deepEqual(asked, [], 'nothing may be installed without the token')
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('fetchLatestVersion caches registry answers for the TTL', async () => {
+	let calls = 0
+	const counting = async () => { calls++; return { ok: true, json: async () => ({ version: '9.9.9' }) } }
+	const first = await fetchLatestVersion('cached-plugin', { fetchImpl: counting, cache: true })
+	const second = await fetchLatestVersion('cached-plugin', { fetchImpl: counting, cache: true })
+	assert.equal(first, '9.9.9')
+	assert.equal(second, '9.9.9')
+	assert.equal(calls, 1, 'the second lookup must come from the cache')
+	// a different name is still fetched
+	await fetchLatestVersion('another-plugin', { fetchImpl: counting, cache: true })
+	assert.equal(calls, 2)
+	// and cache:false always fetches
+	await fetchLatestVersion('cached-plugin', { fetchImpl: counting, cache: false })
+	assert.equal(calls, 3)
 })
