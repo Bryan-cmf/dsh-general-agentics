@@ -173,3 +173,25 @@
     這類問題**不能只靠啟動驗證發現**——安裝階段就失敗了，所以要用
     `npm run check-dsh-compat`（照閘門規則掃所有版本）在發佈前確認，
     並讓 `engines.dsh` 只寫 `>=`（寫上限會擋掉 rc 版）。
+
+23. **desktop profile 必須用「App 自己的 pnpm」安裝，不能用 CLI/homebrew 的 pnpm。**
+    機器上有兩套 pnpm、兩個 store：
+    | 來源 | 版本 | store |
+    |---|---|---|
+    | CLI / homebrew | pnpm 10.33.2 | `~/.pnpm-store/v11/v10`（來自 `~/.npmrc` 的 `store-dir`） |
+    | 桌面 App 內建 | **pnpm 11.28.5** | **`~/Library/pnpm/store/v11`**（App 的預設值，不讀那個 npmrc） |
+    若用 CLI 的 pnpm 對 desktop profile 做 `install`，node_modules 會 link 到 v10 store，
+    之後 **App 內的 plugin manager 任何安裝／更新都會失敗**：
+    `.plugin-manager/logs/operation-*/pnpm.log` 出現
+    `ERR_PNPM_UNEXPECTED_STORE`（"currently linked from … pnpm now wants to use …"），
+    而 UI 上的「更新」看起來**完全沒有反應**。
+    正確做法（App 退出後）：
+    ```
+    cd ~/.dsh/profiles/desktop
+    APP_PNPM="/Applications/DeepSeek Harness.app/Contents/Resources/runtime/primary-runtime/dependencies/pnpm/bin/pnpm.cjs"
+    CI=true node "$APP_PNPM" install --no-frozen-lockfile --config.confirmModulesPurge=false
+    ```
+    注意兩個坑：`CI=true` 會預設 `--frozen-lockfile`（改過 spec 就必須加 `--no-frozen-lockfile`），
+    而 store 變更會觸發「清空 node_modules」，非 TTY 下需要 `--config.confirmModulesPurge=false`。
+    驗收：`.modules.yaml` 的 `storeDir` 應為 `~/Library/pnpm/store/v11`、
+    `packageManager` 為 `pnpm@11.28.5`，且 `CI=true node "$APP_PNPM" install --frozen-lockfile` 應為 no-op。
