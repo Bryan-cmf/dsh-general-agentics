@@ -166,6 +166,17 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 
 資料來自 host 半註冊的唯讀端點 `GET /api/general-agentics/status`（`?plugins=1` 才逐一查 registry，避免每次開面板都打 13 個請求）；`POST` 同一路徑才會實際觸發更新。registry 不可達時面板仍會渲染，只是版本欄顯示「未知」。
 
+## 可選：需要風險豁免的插件（agency-agents）
+
+`@michengai/dsh-agency-agents` 會被 DSH 0.2.1 的安裝閘門拒絕：它宣告的 `@deepseek-ai/dsh*` peer 只列出 0.1.x 的版本，沒有任何已發佈版本被 0.2.1 接受。**因此不能放進本 bundle 的預設清單**（那會讓所有新用戶安裝失敗），但實測它在 0.2.1 上可正常運作——只要對「精確的套件版本 + 精確的 DSH 版本」給一次豁免：
+
+```jsonc
+// ~/.dsh/profiles/<profile>/compatibility.json
+{ "@michengai/dsh-agency-agents@1.0.20": ["0.2.1-rc.2"] }
+```
+
+或執行 `dsh plugin --profile <p> allow-version @michengai/dsh-agency-agents@1.0.20 --dsh-version 0.2.1-rc.2 --accept-risk`（desktop profile 的 CLI 被 App 獨佔，需在 App 內操作或走手動路線）。之後把它加進該 profile 的 `dependencies` 與 `dsh.profile.bundles`，再用**該 App 自己的 pnpm** 安裝。`dsh-web-search-pro` 同理（0.2.x 封頂 `<0.2.1-0`）。
+
 ## 安裝注意（常見「插件沒出現」的原因）
 
 1. **不要同時直裝這些插件**。若該 profile 已經直裝任一精選插件，它會出現**兩行 row、激活兩次**（`insert` 不去重），舊版還會讓設定頁完全存不進去。裝本套件前先移除直裝，或用 `ga_health_check` 檢查（見下）。
