@@ -219,7 +219,8 @@ test('registerStatusEndpoint: POST without a plugin manager hands back the comma
 	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
 	let mounted
 	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : undefined) }
-	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({}) })
+	// the panel asks the registry what is current before touching the manager
+	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
 	let captured
 	await mounted.handler({ method: 'POST', url: '/api/general-agentics/status' }, {
 		writeHead: status => { captured = { status } },
@@ -241,15 +242,19 @@ test('registerStatusEndpoint: POST delegates to the plugin manager when present'
 	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
 	let mounted
 	const asked = []
-	const manager = { installBundle: async spec => { asked.push(spec); return { application: 'restart-required' } } }
+	const manager = {
+		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
+		installBundle: async spec => { asked.push(spec); return { application: 'restart-required' } },
+	}
 	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : name === 'pluginManager' ? manager : undefined) }
-	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({}) })
+	// the panel asks the registry what is current before touching the manager
+	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
 	let captured
 	await mounted.handler({ method: 'POST', url: '/api/general-agentics/status' }, {
 		writeHead: status => { captured = { status } },
 		end: body => { captured.body = JSON.parse(body) },
 	})
-	assert.deepEqual(asked, ['dsh-general-agentics@latest'])
+	assert.deepEqual(asked, ['remove:dsh-general-agentics', 'dsh-general-agentics@1.2.4'])
 	assert.equal(captured.status, 200)
 	assert.equal(captured.body.ok, true)
 	assert.equal(captured.body.restartRequired, true)
