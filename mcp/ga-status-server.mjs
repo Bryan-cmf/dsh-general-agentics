@@ -25,35 +25,16 @@
  * Logs go to stderr only (stdout is the protocol channel).
  */
 import { createInterface } from 'node:readline'
-import { accessSync, constants, readdirSync, readFileSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+// Health checks live in one place, so the panel and this server cannot drift.
+import { duplicatePlugins, prerequisiteItems, prerequisiteReport, probeCommand } from '../lib/health.mjs'
 
-/** External prerequisites that cannot ride along in an npm package. */
-const EXTERNAL_REQUIREMENTS = [
-	{
-		match: /dsh-browser-use/u,
-		needs: 'the `uv` CLI — the plugin provisions a Python virtualenv (~25MB) on first use',
-		probe: 'uv',
-	},
-	{
-		match: /modlens/u,
-		needs: 'the Antigravity CLI — modlens uses it as its vision backend (not probed; install per its README)',
-		probe: null,
-	},
-	{
-		match: /dsh-im/u,
-		needs: 'an IM application credential (Feishu / WeChat / Slack / …) — without one it only logs',
-		probe: null,
-	},
-	{
-		match: /dsh-mobile/u,
-		needs: 'a free TCP port (default 3443) — a second dsh-mobile gateway on the same machine collides',
-		probe: null,
-	},
-]
+export { duplicatePlugins, prerequisiteReport, probeCommand }
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 export function readJson(path) {
 	try {
@@ -114,47 +95,8 @@ export function readProfileManifest(cwd = process.cwd(), root = ROOT) {
 	return looksLikeProfile ? shape(derived, 'install-path', installed) : undefined
 }
 
-/**
- * Curated plugins the profile also installs directly. Each such plugin
- * activates twice, and before the ga- prefixed row ids it also made every
- * settings write fail. Removing the direct install is the fix.
- */
-export function duplicatePlugins(curated, profile) {
-	if (profile === undefined) return []
-	const direct = new Set([...profile.dependencies, ...profile.bundles])
-	return curated.filter(name => direct.has(name))
-}
 
-/** Does an executable of this name exist on PATH? */
-export function probeCommand(name, pathValue = process.env.PATH ?? '') {
-	let found = false
-	for (const dir of pathValue.split(delimiter)) {
-		if (dir === '') continue
-		try {
-			accessSync(join(dir, name), constants.X_OK)
-			found = true
-			break
-		} catch {
-			/* keep looking */
-		}
-	}
-	return found
-}
 
-/** Prerequisite lines for the plugins this bundle curates. */
-export function prerequisiteReport(curated, probe = probeCommand) {
-	const lines = []
-	for (const plugin of curated) {
-		for (const requirement of EXTERNAL_REQUIREMENTS) {
-			if (!requirement.match.test(plugin)) continue
-			const state = requirement.probe === null
-				? 'not probed'
-				: probe(requirement.probe) ? 'found on PATH' : `MISSING (${requirement.probe})`
-			lines.push(`${plugin}: ${requirement.needs} [${state}]`)
-		}
-	}
-	return lines
-}
 
 export function bundleInfoText(root = ROOT) {
 	const pkg = readJson(join(root, 'package.json')) ?? {}
