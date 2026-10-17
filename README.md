@@ -123,6 +123,8 @@ dsh-general-agentics/
 |---|---|---|
 | `dshmarket` | 插件市集 | 設定 → Plugin Market |
 | `dsh-better-sidebar` | 側欄：檔案樹／編輯器／變更／任務／側聊 | 基本即有；`agentOpenTools` 與 sentinel tab 已預設開啟（只新增，不動其他 tab） |
+| `dsh-comments` | **自家工具**：劃選回覆片段、逐段點評，可一鍵把全部點評組裝成訊息送回 | 立即可用 |
+| `dsh-promptimizer` | **自家工具**：一鍵用當前選定模型改寫草稿 prompt（Light/Standard/Deep） | 需要可用的模型 |
 | `dsh-sentinel` | 排程監看面板（BSD-3-Clause，隨包附授權） | 立即可用；better-sidebar 的 sentinel tab 已預設開啟 |
 | `dsh-cost-meter` | 會話費用統計 | 每條回覆的用量行（本套件已預設 `performanceUsage: detailed`） |
 | `@changfenhuang/dsh-genui` | 回覆內嵌互動 UI 卡片 | 本套件已預設區塊位置與提示 |

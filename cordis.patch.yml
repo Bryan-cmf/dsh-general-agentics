@@ -199,6 +199,16 @@
     #   dsh plugin --profile <p> allow-version <pkg>@<ver> --dsh-version <ver> --accept-risk
     # Re-add the rows here once upstream publishes a version this dsh accepts.
 
+    # First-party tools (same maintainer as this bundle): comments lets a user
+    # annotate a reply and hand the annotations back to the agent; promptimizer
+    # rewrites the draft prompt with the currently selected model. Both publish
+    # to npm on their own, so the bundle only wires them in.
+    - id: ga-comments
+      name: dsh-comments
+
+    - id: ga-promptimizer
+      name: dsh-promptimizer
+
     - id: ga-dsh-market
       name: 'dshmarket'
 
