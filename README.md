@@ -128,12 +128,29 @@ dsh-general-agentics/
 | `@changfenhuang/dsh-genui` | 回覆內嵌互動 UI 卡片 | 本套件已預設區塊位置與提示 |
 | `dsh-context` | 上下文洞察／管理 | 本套件已預設開啟 fleet 分頁 |
 | `@liustack/modsearch` | 免費網頁＋X 搜尋聚合 | 本套件已接管 `web` 的 `searchProvider`（用戶 profile patch 可改回） |
-| `dsh-web-search-pro` | 多引擎路由搜尋 | 立即可用 |
 | `@ricardochen1996/dsh-browser-use` | 瀏覽器自動化 | **需 `uv`**（首次自動建 Python venv ~25MB） |
-| `@michengai/dsh-agency-agents` | 331 位可召喚專家／專家團 | **專家與專家團預設停用**（上游 opt-in）：設定 → 专家 啟用；成員需一併啟用 |
 | `@xmanrui/dsh-im` | 微信／飛書／企微／釘釘／TG／Slack… 橋接 | **需 IM 應用憑證**，否則只有背景日誌 |
 | `@liustack/modlens` | 給純文字 LLM 的視覺能力 | **需 Antigravity CLI**（未隨包） |
 | `dsh-mobile` | 手機／局域網安全訪問、目錄選擇器 | 佔用一個 TCP 埠（預設 3443）；同機第二個 gateway 會撞埠 |
+
+## DSH 版本相容性（0.2.1 的安裝閘門）
+
+DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-boot` 的 plugin-compatibility）：**有 `engines.dsh` 就只看它，否則檢查它對 `@deepseek-ai/dsh*` 的 peer 範圍**，用 `semver.satisfies(..., {includePrerelease:true})` 判斷。**只要有一個插件不合格，整個安裝會被拒絕並回滾**。
+
+因此本套件：
+
+- 宣告 `engines.dsh: ">=0.2.1-rc.2"`（只用 `>=`，才不會把 rc 版擋掉）
+- 精選清單以 **0.2.1 可接受的版本**為 floor；發佈前用 `npm run check-dsh-compat` 核對
+- **兩個插件目前不納入**（在 0.2.1 上無法安裝，非我們能修）：
+  | 插件 | 原因 |
+  |---|---|
+  | `@michengai/dsh-agency-agents` | 所有已發佈版本的 peer 只列出 0.1.x 的 dsh，沒有任何版本被 0.2.1 接受 |
+  | `dsh-web-search-pro` | 0.2.x 全部封頂 `<0.2.1-0`；唯一能過的是 0.1.2（降級，故不納入） |
+  需要它們時可手動安裝並自負風險：
+  ```sh
+  dsh plugin --profile <p> allow-version <pkg>@<ver> --dsh-version 0.2.1-rc.2 --accept-risk
+  ```
+  上游發佈相容版本後，把 row 加回 `cordis.patch.yml` 即可（`test/bundle-manifest.test.mjs` 會檢查依賴與 row 是否一致）。
 
 ## 設定面板（Settings → General Agentics）
 

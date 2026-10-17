@@ -183,9 +183,6 @@
     - id: ga-dsh-context
       name: dsh-context
 
-    - id: ga-web-search-pro
-      name: dsh-web-search-pro
-
     # Provisions a Python virtualenv (~25MB, needs `uv`) on first use and runs
     # a browser daemon. Heavy but non-fatal: the row activates either way.
     - id: ga-dsh-browser-use
@@ -193,13 +190,14 @@
       config:
         mode: launch
 
-    # Two rows, remote half first — that is upstream's order and insertion
-    # order is load order.
-    - id: ga-agency-agents-remote
-      name: '@michengai/dsh-agency-agents/remote'
-
-    - id: ga-agency-agents
-      name: '@michengai/dsh-agency-agents'
+    # NOT curated on dsh >= 0.2.1 — the runtime's installation gate refuses them:
+    #   @michengai/dsh-agency-agents  peers list only 0.1.x dsh versions, so no
+    #                                 published version is installable
+    #   dsh-web-search-pro            every 0.2.x caps at <0.2.1-0; only 0.1.2 passes
+    #                                 (a downgrade, so it stays out)
+    # Users who want them can install manually and accept the risk with
+    #   dsh plugin --profile <p> allow-version <pkg>@<ver> --dsh-version <ver> --accept-risk
+    # Re-add the rows here once upstream publishes a version this dsh accepts.
 
     - id: ga-dsh-market
       name: 'dshmarket'

@@ -161,3 +161,15 @@
     `./../dsh-mobile/packages/question-fixes/lib/index.mjs`
     （hoisted 佈局下 `dsh-mobile` 與本套件是 node_modules 的兄弟；0.5.5 與 0.6.10 皆有此檔）。
     不這樣寫的症狀：`dsh-ui-fixes (dsh-mobile-question-fixes): failed to import`。
+
+22. **DSH 0.2.1 的安裝閘門（會讓整包安裝被拒）。**
+    0.2.1 起 `dsh plugin add` 會先驗證每個插件的相容性：**有 `engines.dsh` 就只看它，
+    否則檢查它對 `@deepseek-ai/dsh` / `@deepseek-ai/dsh-*` 的 peer 範圍**，
+    並用 `semver.satisfies(runtime, range, {includePrerelease:true})` 判斷。
+    **只要一個插件不合格，整個安裝被拒絕並回滾**（錯誤訊息會列出不合格的
+    requirements 與 `allow-version` 的用法）。
+    實測（0.2.1-rc.2）：`@michengai/dsh-agency-agents` 所有版本都不被接受
+    （peer 只列 0.1.x），`dsh-web-search-pro` 只有 0.1.2 可過（降級）→ 兩者移出精選清單。
+    這類問題**不能只靠啟動驗證發現**——安裝階段就失敗了，所以要用
+    `npm run check-dsh-compat`（照閘門規則掃所有版本）在發佈前確認，
+    並讓 `engines.dsh` 只寫 `>=`（寫上限會擋掉 rc 版）。

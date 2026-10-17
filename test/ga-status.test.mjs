@@ -31,12 +31,12 @@ function makeProfile(manifest) {
 	return dir
 }
 
-const DEP = '@michengai/dsh-agency-agents'
+const DEP = '@liustack/modlens'
 const ROOT_FOR_TEST = fileURLToPath(new URL('..', import.meta.url))
 
 test('curatedPlugins lists this bundle\'s dependencies', () => {
 	const curated = curatedPlugins()
-	assert.ok(curated.length >= 12, `expected the curated set, got ${curated.length}`)
+	assert.ok(curated.length >= 11, `expected the curated set, got ${curated.length}`)
 	assert.ok(curated.includes(DEP))
 })
 

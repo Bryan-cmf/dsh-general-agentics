@@ -1,6 +1,6 @@
 {
   "name": "dsh-general-agentics",
-  "version": "0.2.0-alpha.17",
+  "version": "0.2.0-alpha.18",
   "description": "General Agentics distribution bundle for DeepSeek Harness (DSH): one install brings the General Agentics white-label brand, curated plugins, bundled skills, and MCP pre-configuration. Built on DeepSeek Harness (DSH).",
   "license": "MIT",
   "repository": {
@@ -14,11 +14,12 @@
   "type": "module",
   "main": "lib/index.js",
   "engines": {
-    "dsh": ">=0.2.0-rc.2"
+    "dsh": ">=0.2.1-rc.2"
   },
   "scripts": {
     "test": "node --test test/",
-    "check-upstream": "node scripts/check-upstream.mjs"
+    "check-upstream": "node scripts/check-upstream.mjs",
+    "check-dsh-compat": "node scripts/check-dsh-compat.mjs"
   },
   "files": [
     "lib",
@@ -57,15 +58,13 @@
     "@changfenhuang/dsh-genui": "^0.12.0",
     "@liustack/modlens": "^3.27.1",
     "@liustack/modsearch": "^5.10.7",
-    "@michengai/dsh-agency-agents": "^1.0.20",
     "@ricardochen1996/dsh-browser-use": "^0.6.1",
     "@xmanrui/dsh-im": "^4.39.0",
-    "dsh-better-sidebar": "^0.26.1",
-    "dsh-context": "^0.72.0",
+    "dsh-better-sidebar": "^0.28.0",
+    "dsh-context": "^0.73.0",
     "dsh-cost-meter": "^1.8.35",
-    "dsh-mobile": "^0.6.10",
+    "dsh-mobile": "^0.6.11",
     "dsh-sentinel": "^0.11.1",
-    "dsh-web-search-pro": "^0.2.1",
-    "dshmarket": "^1.66.28"
+    "dshmarket": "^1.66.35"
   }
 }

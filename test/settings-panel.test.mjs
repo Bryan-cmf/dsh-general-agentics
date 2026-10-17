@@ -185,7 +185,7 @@ test('buildStatus survives an unreachable registry', async () => {
 test('readOwnManifest returns this package, including its curated list', () => {
 	const manifest = readOwnManifest()
 	assert.equal(manifest.name, 'dsh-general-agentics')
-	assert.ok(Object.keys(manifest.dependencies).length >= 13)
+	assert.ok(Object.keys(manifest.dependencies).length >= 11)
 })
 
 test('registerStatusEndpoint: GET returns status, unknown methods are rejected', async () => {
