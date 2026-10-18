@@ -249,6 +249,17 @@ await probe('P15', 'branding', 'title writes are idempotent (no observer loop)',
 	return 'both title writes compare before assigning'
 })
 
+// ── P17: every list-slot registration carries an id ───────────────────────
+await probe('P17', 'slots', 'list-slot registrations carry an id', async () => {
+	for (const slot of ['plugins.detail.badge', 'settings.section', 'sidebar.footer.action']) {
+		const pattern = new RegExp(`register\\(\\{[^}]*name: '${slot.replace(/\./g, '\\.')}'[^}]*\\}`, 's')
+		const block = CLIENT.match(pattern)?.[0] ?? ''
+		assert(block.includes('id:'), `${slot} registered without an id`)
+		assert(!block.includes('priority:'), `${slot} is a list slot but uses priority`)
+	}
+	return 'all three list slots use id + order'
+})
+
 // ── P16: list slots are registered with id+order, not priority ────────────
 await probe('P16', 'slots', 'the sidebar footer entry uses id+order', async () => {
 	assert(/name: 'sidebar\.footer\.action', id: 'general-agentics-status', order: -1/u.test(CLIENT), 'footer registered without id/order')

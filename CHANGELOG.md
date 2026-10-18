@@ -4,6 +4,19 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.29 (unreleased)
+
+- **Hero hierarchy**: the official hero renders the brand slot and its headline
+  in one 26px flex row, so "General Agentics Powered by DeepSeek Harness" read as
+  a single long sentence. The brand now sits on its own line and the attribution
+  (with the Preview pill) is a 12.5px muted footnote below it, centred. Reached
+  through `:has()` on a stable `data-ga-hero` hook because the shell's class
+  names are hashed; browsers without `:has()` keep the original row.
+- **Fixed `plugins.detail.badge`**: it is a list slot, and our registration used
+  `priority` without an `id`. It threw (`list slot … requires options.id`) when a
+  plugin detail page rendered, so the GA badge never appeared. Probe P17 now
+  refuses a list-slot registration without an id.
+
 ## 0.2.0-alpha.28 (unreleased)
 
 - **dsh-comments 0.6.0**: the comments plugin is renamed end to end (data,

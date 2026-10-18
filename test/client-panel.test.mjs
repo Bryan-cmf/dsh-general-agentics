@@ -270,3 +270,23 @@ test('controls expose hover and focus states', async () => {
 	tab.props.onFocus({ currentTarget: { style } })
 	assert.ok(String(style.outline ?? '').includes('2px'), `focus outline: ${style.outline}`)
 })
+
+test('the hero brand carries a stable hook and stacks the attribution', async () => {
+	const { browser, client, mount, settle } = setup()
+	const view = mount(client.heroMark, { className: 'fish' })
+	await settle(view)
+	assert.equal(view.tree.props['data-ga-hero'], 'wordmark')
+	const style = browser.document.head.children.find(node => node.tagName === 'STYLE' && node.attributes['data-ga-hero-layout'] !== undefined)
+	assert.ok(style !== undefined, 'hero layout style was not injected')
+	assert.ok(style.textContent.includes('flex-direction: column'), 'the row is not stacked')
+	assert.ok(style.textContent.includes('font-size: 12.5px'), 'the attribution is not smaller')
+	assert.ok(style.textContent.includes(':has(> span [data-ga-hero="wordmark"])'), 'the selector lost its anchor')
+})
+
+test('the plugin badge registers into the list slot with an id', () => {
+	const { client } = setup()
+	const entry = client.registered.find(item => item.options.name === 'plugins.detail.badge')
+	assert.ok(entry !== undefined, 'no plugins.detail.badge registration')
+	assert.equal(entry.options.id, 'general-agentics')
+	assert.equal(entry.options.priority, undefined, 'list slots do not take priority')
+})
