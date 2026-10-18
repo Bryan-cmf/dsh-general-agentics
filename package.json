@@ -17,7 +17,7 @@
     "dsh": ">=0.2.1-rc.2"
   },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/bundle-manifest.test.mjs test/client-panel.test.mjs test/ga-status.test.mjs test/settings-panel.test.mjs test/skill-provider.test.mjs",
     "check-upstream": "node scripts/check-upstream.mjs",
     "check-dsh-compat": "node scripts/check-dsh-compat.mjs",
     "prepublish-check": "node scripts/prepublish-check.mjs",
