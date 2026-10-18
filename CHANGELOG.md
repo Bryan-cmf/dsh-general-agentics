@@ -4,6 +4,13 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.28 (unreleased)
+
+- **dsh-comments 0.6.0**: the comments plugin is renamed end to end (data,
+  routes, localStorage keys, DOM attributes, logs), with the old marks file and
+  keys migrated automatically. This release raises the floor to `^0.6.0` so a
+  fresh install gets the renamed plugin rather than the old one.
+
 ## 0.2.0-alpha.27 (unreleased)
 
 - **Visible without opening Settings**: a status pill in the sidebar footer
