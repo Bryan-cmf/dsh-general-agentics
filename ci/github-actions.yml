@@ -32,7 +32,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Unit and structural tests
-        run: npm test
-      - name: The package must build a tarball
-        run: npm pack --dry-run
+      # One command, the same one a maintainer runs locally: 89 tests, the 14
+      # adversarial probes and a tarball dry-run. Keeping this identical to
+      # `npm run ci` means a green local run and a green workflow mean the same
+      # thing.
+      - name: Gate (tests + review probes + tarball)
+        run: npm run ci
