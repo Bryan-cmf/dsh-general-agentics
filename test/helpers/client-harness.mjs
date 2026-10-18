@@ -325,5 +325,5 @@ export function loadClient({ browser, react }) {
 	exports.apply(ctx)
 
 	const find = name => registered.find(item => item.options.name === name)?.Component
-	return { exports, registered, effects, themeCalls, panel: find('settings.section'), badge: find('sidebar.toggle.badge'), pluginBadge: find('plugins.detail.badge'), }
+	return { exports, registered, effects, themeCalls, panel: find('settings.section'), badge: find('sidebar.toggle.badge'), pluginBadge: find('plugins.detail.badge'), footer: find('sidebar.footer.action'), }
 }

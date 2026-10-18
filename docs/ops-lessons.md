@@ -227,3 +227,15 @@
     inject 清單內的服務；其他屬性存取可能拋。規則：任何非 inject 的服務讀取都要包
     try/catch，且 client half 的任何初始化都不得讓 apply 拋出。驗證方式：每次改
     client 後用乾淨 profile 開一次頁面，確認沒有 `did not activate`。
+
+29. **list slot 用 `id` + `order` 註冊，不是 `priority`。**
+    我們的側欄 footer 狀態列一開始用 `priority: -1` 註冊進
+    `sidebar.footer.action`，結果**完全不會渲染**（也沒有錯誤）。對照同一個 slot 的
+    其他插件：`{ name, id, order, inject }`。single slot 才用 priority（且實測只接受負值）。
+    驗證方式：加一個 `data-*` 屬性並在瀏覽器查 DOM，不要只看程式碼。
+
+30. **observer 驅動的 title 改寫必須冪等。**
+    我們在 head 的 MutationObserver 裡改寫 `document.title`，其中一個分支無論如何都賦值；
+    title 變動 → observer → 再賦值 → 無限迴圈。實際症狀：瀏覽器 22 個進程、800% CPU、
+    頁面永遠載不完。規則：每一次 `document.title = …` 之前都要比較目前值；並用探針
+    把這個約束固定下來（P15）。

@@ -241,6 +241,20 @@ await probe('P14', 'D3 locale', 'the language source is observable for verificat
 	return 'window.__GA_LOCALE_SOURCE__ records service vs browser'
 })
 
+// ── P15: the title rewrite must never assign when nothing changed ─────────
+await probe('P15', 'branding', 'title writes are idempotent (no observer loop)', async () => {
+	assert(/if \(document\.title !== branded\) document\.title = branded/u.test(CLIENT), 'branded title assigned unconditionally')
+	assert(/const wanted = titleAttention && base !== ''/.test(CLIENT), 'marker helper missing')
+	assert(/if \(document\.title !== wanted\) document\.title = wanted/u.test(CLIENT), 'marker assigned unconditionally')
+	return 'both title writes compare before assigning'
+})
+
+// ── P16: list slots are registered with id+order, not priority ────────────
+await probe('P16', 'slots', 'the sidebar footer entry uses id+order', async () => {
+	assert(/name: 'sidebar\.footer\.action', id: 'general-agentics-status', order: -1/u.test(CLIENT), 'footer registered without id/order')
+	return 'list-slot registration uses id + order'
+})
+
 const failed = results.filter(item => !item.ok)
 const width = Math.max(...results.map(item => item.title.length))
 console.log('review probes\n')

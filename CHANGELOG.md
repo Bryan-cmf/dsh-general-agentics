@@ -4,6 +4,21 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.27 (unreleased)
+
+- **Visible without opening Settings**: a status pill in the sidebar footer
+  ("Update available: 0.2.0-alpha.30", or "N need attention") that opens the
+  bundle page, plus a leading `●` in the tab title. Both respect the quiet
+  window. Registering into a **list** slot needs `id` + `order`, not `priority`
+  — with `priority` the entry silently never rendered (probe P16 and a lesson).
+- **Fixed a self-inflicted P0**: the title rewrite assigned `document.title`
+  unconditionally, the head observer fired on that write, and the page spun up
+  22 browser processes at ~800% CPU without ever loading. Both title writes now
+  compare before assigning; probe P15 guards it.
+- **Keyboard and pointer affordances**: the tab list responds to ←/→, controls
+  show a hover background and a focus outline, and the skills search clears on
+  Esc.
+
 ## 0.2.0-alpha.26 (unreleased)
 
 - **Tabs**: the panel had grown to ten stacked cards; it is now four tabs —

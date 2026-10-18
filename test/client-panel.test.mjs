@@ -68,6 +68,7 @@ test('the client half registers the brand slots, the badges and the panel', () =
 		'settings.section',
 		'sidebar.brand.mark',
 		'sidebar.brand.name',
+		'sidebar.footer.action',
 		'sidebar.toggle.badge',
 	])
 	assert.equal(client.exports.name, 'general-agentics')
@@ -215,4 +216,57 @@ test('the plugin badge marks curated plugins and ignores everything else', async
 	const otherView = other.mount(other.client.pluginBadge, { subject: { name: 'something-else' } })
 	await other.settle(otherView)
 	assert.equal(otherView.tree, null)
+})
+
+test('the sidebar footer shows a status pill only when something is wrong', async () => {
+	const withUpdate = setup({ status: STATUS({ updateAvailable: true, latest: '0.2.0-alpha.30' }) })
+	const view = withUpdate.mount(withUpdate.client.footer, { wide: true })
+	await withUpdate.settle(view)
+	assert.ok(view.tree !== null, 'no footer pill for a pending update')
+	assert.ok(view.text().includes('Update available'), `pill text: ${view.text()}`)
+	// hidden is honoured (the shell can ask the footer to stand down)
+	const hidden = setup({ status: STATUS({ updateAvailable: true }) })
+	const hiddenView = hidden.mount(hidden.client.footer, { wide: true, hidden: true })
+	await hidden.settle(hiddenView)
+	assert.equal(hiddenView.tree, null)
+	const clean = setup()
+	const cleanView = clean.mount(clean.client.footer, { wide: true })
+	await clean.settle(cleanView)
+	assert.equal(cleanView.tree, null, 'a clean deployment must not nag')
+})
+
+test('attention is reflected in the tab title', async () => {
+	const { browser, client, mount, settle } = setup({ status: STATUS({ updateAvailable: true, latest: '0.2.0-alpha.30' }) })
+	browser.document.title = 'DeepSeek Harness'
+	const view = mount(client.badge, { hidden: false })
+	await settle(view)
+	assert.ok(String(browser.document.title).startsWith('● '), `title: ${browser.document.title}`)
+	assert.ok(String(browser.document.title).includes('General Agentics'))
+})
+
+test('the tab list can be driven with the arrow keys', async () => {
+	const { client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const tablist = view.tree.children.find(child => child !== null && child.props?.role === 'tablist')
+	assert.ok(tablist !== undefined, 'no tablist')
+	tablist.props.onKeyDown({ key: 'ArrowRight', preventDefault: () => {} })
+	view.render()
+	const selected = view.tree.children.find(child => child !== null && child.props?.role === 'tablist')
+		.children.filter(child => child.props?.role === 'tab')
+		.find(child => child.props['aria-selected'] === true)
+	assert.ok(textOf(selected).includes('Plugins'), `selected tab: ${textOf(selected)}`)
+})
+
+test('controls expose hover and focus states', async () => {
+	const { client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const tab = view.tree.children.find(child => child !== null && child.props?.role === 'tablist')
+		.children.filter(child => child.props?.role === 'tab')[0]
+	assert.equal(typeof tab.props.onMouseEnter, 'function', 'no hover handler')
+	assert.equal(typeof tab.props.onFocus, 'function', 'no focus handler')
+	const style = {}
+	tab.props.onFocus({ currentTarget: { style } })
+	assert.ok(String(style.outline ?? '').includes('2px'), `focus outline: ${style.outline}`)
 })
