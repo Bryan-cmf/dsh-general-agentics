@@ -10,6 +10,20 @@ dependency ranges that the profile's package manager resolves.
   target manifest and shows exactly which dependency ranges move
   (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
   mode `GET /api/general-agentics/status?preview=1`.
+- **Health score (C3)**: `healthScore()` turns the status payload into 0-100 plus
+  the exact deductions (missing plugin -12 each, duplicate install -8, missing
+  prerequisite -10, behind -2, all capped). Shown as a chip in the panel header
+  and as a list in the health card; pure function, unit tested including the
+  clamp at zero.
+- **Diagnostics bundle (C1)**: `GET /status?diagnostics=1` returns paste-ready
+  Markdown — bundle/profile, health and deductions, the curated matrix with
+  flags, prerequisites, settings, last write, and usage. A "Copy diagnostics"
+  button puts it on the clipboard, so a bug report no longer needs an interview.
+- **Usage insights (C2, best-effort)**: `GET /status?usage=1` reads the newest
+  twelve session logs (zstd, `tool/call` records only), counts tools and skill
+  invocations, and renders "12 sessions scanned, 2143 tool calls" plus the skills
+  used. Counts only — no message text leaves the host. Degrades to a stated
+  reason when Node lacks zstd or the store is unreadable.
 - **Skills browser (B1)**: the panel lists each bundled skill with its one-line
   description and a "Try" button that seeds the composer with
   `Use the "<skill>" skill for this task: `. The host now parses SKILL.md

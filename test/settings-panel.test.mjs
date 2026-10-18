@@ -16,8 +16,10 @@ import { join } from 'node:path'
 
 import {
 	allowWrite,
+	buildDiagnostics,
 	buildStatus,
 	compareSemver,
+	healthScore,
 	diffDependencies,
 	fetchLatestVersion,
 	normalizeWindow,
@@ -29,7 +31,9 @@ import {
 	readOwnManifest,
 	quietHoursActive,
 	readSkillDetails,
+	readUsage,
 	registerStatusEndpoint,
+	summarizeUsage,
 	writeState,
 	resolveProfile,
 	STATUS_ENDPOINT,
@@ -521,4 +525,93 @@ test('readSkillDetails reads front-matter and degrades to the folder name', () =
 		{ name: 'beta', description: '' },
 	])
 	rmSync(root, { recursive: true, force: true })
+})
+
+test('healthScore: clean input is 100, problems deduct with reasons', () => {
+	const clean = healthScore({ curated: [{ name: 'a', installed: '1.0.0' }], prerequisites: [{ plugin: 'a', state: 'found' }] })
+	assert.equal(clean.score, 100)
+	assert.equal(clean.grade, 'A')
+	assert.deepEqual(clean.deductions, [])
+
+	const bad = healthScore({
+		curated: [{ name: 'b' }, { name: 'c', installed: '1.0.0', alsoDirect: true }, { name: 'd', installed: '1.0.0', updateAvailable: true }],
+		prerequisites: [{ plugin: 'e', state: 'missing' }],
+	})
+	assert.ok(bad.score < 100)
+	const codes = bad.deductions.map(item => item.code).sort()
+	assert.deepEqual(codes, ['behind', 'duplicate', 'missing', 'prerequisite'])
+	// every deduction names what it is about
+	for (const item of bad.deductions) assert.ok(item.detail.length > 5)
+
+	// the score never goes negative, however bad it gets
+	const awful = healthScore({
+		curated: [...Array(10)].map((_, i) => ({ name: `p${i}` })),
+		prerequisites: [...Array(10)].map((_, i) => ({ plugin: `q${i}`, state: 'missing' })),
+	})
+	assert.equal(awful.score, 44)
+})
+
+test('summarizeUsage counts tools and parses skill names from arguments', () => {
+	const usage = summarizeUsage([
+		{ name: 'bash', arguments: '{}' },
+		{ name: 'bash', arguments: '{}' },
+		{ name: 'skill', arguments: '{"name":"brainstorming"}' },
+		{ name: 'skill', arguments: '{"name":"verification-before-completion"}' },
+		{ name: 'skill', arguments: 'not json' },
+		{ arguments: '{}' },
+	])
+	assert.equal(usage.toolCalls, 5)
+	assert.deepEqual(usage.tools, [
+		{ name: 'skill', count: 3 },
+		{ name: 'bash', count: 2 },
+	])
+	assert.deepEqual(usage.skills, [
+		{ name: 'brainstorming', count: 1 },
+		{ name: 'verification-before-completion', count: 1 },
+	])
+})
+
+test('readUsage reads a compressed session store through an injected decompressor', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-sessions-'))
+	mkdirSync(join(root, 'workspace', 'session-1'), { recursive: true })
+	const records = [
+		{ type: 'session' },
+		{ type: 'tool/call', data: { name: 'bash', arguments: '{}' } },
+		{ type: 'tool/call', data: { name: 'skill', arguments: '{"name":"brainstorming"}' } },
+	].map(record => JSON.stringify(record)).join('\n')
+	writeFileSync(join(root, 'workspace', 'session-1', 'session.v4.jsonl.zstd'), 'compressed-placeholder')
+	const usage = readUsage({ sessionsRoot: root, decompress: () => Buffer.from(records) })
+	assert.equal(usage.ok, true)
+	assert.equal(usage.sessions, 1)
+	assert.equal(usage.toolCalls, 2)
+	assert.deepEqual(usage.skills, [{ name: 'brainstorming', count: 1 }])
+
+	// a missing store degrades instead of throwing
+	assert.equal(readUsage({}).ok, false)
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('buildDiagnostics renders the sections an issue needs', () => {
+	const status = {
+		current: '1.2.3', latest: '1.2.4',
+		profile: { dir: '/tmp/prof', source: 'argv-profile' },
+		health: { score: 78, grade: 'B', deductions: [{ code: 'missing', points: 12, detail: '1 not provided: b' }] },
+		curated: [{ name: 'a', spec: '^1.0.0', installed: '1.0.0', latest: '1.0.1', updateAvailable: true }],
+		prerequisites: [{ plugin: 'a', state: 'found', needs: 'nothing' }],
+		settings: { quietHours: { from: 22, to: 8 }, quietNow: true },
+		rollback: { version: '1.2.2' },
+		lastResult: { action: 'update', ok: true, at: '2026-01-01T00:00:00.000Z' },
+	}
+	const markdown = buildDiagnostics({ status, usage: { ok: true, sessions: 2, toolCalls: 5, tools: [{ name: 'bash', count: 5 }], skills: [] } })
+	assert.match(markdown, /^# General Agentics diagnostics/u)
+	assert.match(markdown, /health:\s+78 \/ 100 \(B\)/u)
+	assert.match(markdown, /\[missing\] -12/u)
+	assert.match(markdown, /\| a \| \^1\.0\.0 \| 1\.0\.0 \| 1\.0\.1 \| behind \|/u)
+	assert.match(markdown, /quiet hours: 22:00-08:00 \(now quiet: true\)/u)
+	assert.match(markdown, /rollback target: 1\.2\.2/u)
+	assert.match(markdown, /sessions scanned: 2, tool calls: 5/u)
+	assert.match(markdown, /update at 2026-01-01T00:00:00\.000Z: ok=true/u)
+	// a usage failure is stated, not omitted
+	const withoutUsage = buildDiagnostics({ status, usage: { ok: false, reason: 'no session store' } })
+	assert.match(withoutUsage, /unavailable: no session store/u)
 })
