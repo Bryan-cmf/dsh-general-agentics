@@ -9,7 +9,9 @@ dependency ranges that the profile's package manager resolves.
 - **Hero hierarchy**: the official hero renders the brand slot and its headline
   in one 26px flex row, so "General Agentics Powered by DeepSeek Harness" read as
   a single long sentence. The brand now sits on its own line and the attribution
-  (with the Preview pill) is a 12.5px muted footnote below it, centred. Reached
+  (with the Preview pill) is a 12.5px muted footnote below it — starting on the
+  centre line, so it sits under the brand's lower right; below 640px it falls
+  back to centred because a 50% start would run past the edge. Reached
   through `:has()` on a stable `data-ga-hero` hook because the shell's class
   names are hashed; browsers without `:has()` keep the original row.
 - **Fixed `plugins.detail.badge`**: it is a list slot, and our registration used
