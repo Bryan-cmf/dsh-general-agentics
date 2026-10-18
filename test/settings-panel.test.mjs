@@ -18,12 +18,15 @@ import {
 	allowWrite,
 	buildStatus,
 	compareSemver,
+	diffDependencies,
 	fetchLatestVersion,
+	readState,
 	installedVersion,
 	profileNameFromDir,
 	profileSpecFor,
 	readOwnManifest,
 	registerStatusEndpoint,
+	writeState,
 	resolveProfile,
 	STATUS_ENDPOINT,
 } from '../lib/index.js'
@@ -374,4 +377,101 @@ test('buildStatus still answers when the registry is unreachable', async () => {
 	assert.equal(status.curated[0].installed, undefined)
 	assert.equal(status.curated[0].latest, undefined)
 	rmSync(root, { recursive: true, force: true })
+})
+
+test('diffDependencies reports added, removed and changed plugins', () => {
+	const current = { a: '^1.0.0', b: '^2.0.0', c: '^3.0.0' }
+	const next = { a: '^1.1.0', c: '^3.0.0', d: '^4.0.0' }
+	assert.deepEqual(diffDependencies(current, next), [
+		{ name: 'a', from: '^1.0.0', to: '^1.1.0', kind: 'changed' },
+		{ name: 'b', from: '^2.0.0', to: undefined, kind: 'removed' },
+		{ name: 'd', from: undefined, to: '^4.0.0', kind: 'added' },
+	])
+	assert.deepEqual(diffDependencies({}, {}), [])
+})
+
+test('readState/writeState round-trips and tolerates junk', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'ga-state-'))
+	assert.equal(writeState('update.json', { from: '1.0.0', to: '1.1.0' }, dir), true)
+	assert.deepEqual(readState('update.json', dir), { from: '1.0.0', to: '1.1.0' })
+	writeFileSync(join(dir, 'broken.json'), '{not json')
+	assert.equal(readState('broken.json', dir), undefined)
+	assert.equal(readState('missing.json', dir), undefined)
+	rmSync(dir, { recursive: true, force: true })
+})
+
+test('buildStatus exposes a rollback target when the last update landed here', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root10-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '2.0.0', dependencies: {} }))
+	const state = mkdtempSync(join(tmpdir(), 'ga-state2-'))
+	writeState('update.json', { from: '1.9.0', to: '2.0.0', at: '2026-01-01T00:00:00.000Z' }, state)
+	const status = await buildStatus({ root, cwd: '/tmp', stateDir: state, fetchImpl: async () => ({ ok: false }) })
+	assert.deepEqual(status.rollback, { version: '1.9.0', at: '2026-01-01T00:00:00.000Z' })
+	// a record that does not point at the installed version is not offered
+	writeState('update.json', { from: '1.9.0', to: '1.8.0' }, state)
+	const other = await buildStatus({ root, cwd: '/tmp', stateDir: state, fetchImpl: async () => ({ ok: false }) })
+	assert.equal(other.rollback, undefined)
+	rmSync(root, { recursive: true, force: true })
+	rmSync(state, { recursive: true, force: true })
+})
+
+test('registerStatusEndpoint: preview diffs the manifest without installing', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root11-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({
+		name: 'dsh-general-agentics', version: '1.0.0', dependencies: { 'a-plugin': '^1.0.0' },
+	}))
+	let mounted
+	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : undefined) }
+	const fetchImpl = async url => {
+		if (String(url).includes('registry')) {
+			if (String(url).endsWith('/latest')) return { ok: true, json: async () => ({ version: '1.1.0' }) }
+			return { ok: true, json: async () => ({ name: 'dsh-general-agentics', version: '1.1.0', dependencies: { 'a-plugin': '^1.1.0', 'b-plugin': '^2.0.0' }, engines: { dsh: '>=0.2.1-rc.2' } }) }
+		}
+		return { ok: false }
+	}
+	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl, stateDir: mkdtempSync(join(tmpdir(), 'ga-state3-')) })
+	let captured
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status?preview=1', headers: {} }, {
+		writeHead: status => { captured = { status } },
+		end: body => { captured.body = JSON.parse(body) },
+	})
+	assert.equal(captured.status, 200)
+	assert.equal(captured.body.to, '1.1.0')
+	assert.deepEqual(captured.body.changes.map(c => `${c.name}:${c.kind}`), ['a-plugin:changed', 'b-plugin:added'])
+	assert.equal(captured.body.enginesDsh, '>=0.2.1-rc.2')
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('registerStatusEndpoint: POST ?action=rollback installs the recorded version', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root12-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '2.0.0', dependencies: {} }))
+	const state = mkdtempSync(join(tmpdir(), 'ga-state4-'))
+	writeState('update.json', { from: '1.9.0', to: '2.0.0', at: '2026-01-01T00:00:00.000Z' }, state)
+	let mounted
+	const asked = []
+	const manager = {
+		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
+		installBundle: async spec => { asked.push(spec); return { application: 'applied' } },
+	}
+	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : name === 'pluginManager' ? manager : undefined) }
+	// after the swap the profile resolves to the fixture root, so installedVersion reads our 2.0.0
+	registerStatusEndpoint(scope, {
+		root, cwd: root, fetchImpl: async () => ({ ok: false }), stateDir: state,
+		resolve: () => ({ dir: root }),
+	})
+	let csrf
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status?plugins=1', headers: {} }, {
+		writeHead: () => {}, end: body => { csrf = JSON.parse(body).csrf },
+	})
+	// the fixture profile has no node_modules, so the rollback cannot verify; it must
+	// still install the recorded version and report the verification failure honestly
+	let captured
+	await mounted.handler({
+		method: 'POST', url: '/api/general-agentics/status?action=rollback',
+		headers: { host: 'localhost', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf },
+	}, { writeHead: status => { captured = { status } }, end: body => { captured.body = JSON.parse(body) } })
+	assert.deepEqual(asked, ['remove:dsh-general-agentics', 'dsh-general-agentics@1.9.0'])
+	assert.equal(captured.body.code, 'rollback-verify-failed')
+	rmSync(root, { recursive: true, force: true })
+	rmSync(state, { recursive: true, force: true })
 })

@@ -4,7 +4,19 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
-## 0.2.0-alpha.24 (unreleased)
+## 0.2.0-alpha.25 (unreleased)
+
+- **Update preview (A1)**: before installing, the panel asks the registry for the
+  target manifest and shows exactly which dependency ranges move
+  (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
+  mode `GET /api/general-agentics/status?preview=1`.
+- **One-click rollback (A2)**: every successful update records `from → to` under
+  `${DSH_HOME}/general-agentics/update.json`; the panel then offers "Back to
+  <version>" (with a confirmation). Rolling back flips the record, so it can be
+  rolled forward again with the next update. New endpoint mode
+  `POST /api/general-agentics/status?action=rollback`.
+
+## 0.2.0-alpha.24
 
 - Security: the update endpoint now requires a same-origin request carrying a
   per-process token issued by the status GET. A blind `curl`, a wrong token, a
