@@ -10,6 +10,15 @@ dependency ranges that the profile's package manager resolves.
   target manifest and shows exactly which dependency ranges move
   (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
   mode `GET /api/general-agentics/status?preview=1`.
+- **Brand accents (D1)**: four presets (indigo / teal / amber / rose), each with
+  light and dark values, applied through the theme service and stored in
+  `settings.json`. The panel recolours immediately; the choice survives restarts.
+- **First-run wizard (D2)**: a dismissible card on first open that sets language,
+  accent and quiet hours in one place, then goes away (localStorage flag).
+- **App locale (D3)**: the client half now asks the app's locale service for the
+  active language instead of only sniffing `navigator.language`, guarded because
+  `locale` is not in the bundle's inject list (an unguarded read took the whole
+  client half down once — the E2E caught it and it is now in ops-lessons).
 - **Health score (C3)**: `healthScore()` turns the status payload into 0-100 plus
   the exact deductions (missing plugin -12 each, duplicate install -8, missing
   prerequisite -10, behind -2, all capped). Shown as a chip in the panel header

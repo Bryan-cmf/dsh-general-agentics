@@ -220,3 +220,10 @@
 27. **面板一次要打 14 個 registry 查詢時：先畫快照、再補矩陣，並加 TTL 快取。**
     實測：快照 0.060s、矩陣首次 0.337s、第二次 0.002s（60 秒 TTL）。
     未知狀態要顯示「查詢中」而不是誤報「最新」。
+
+28. **沒 inject 的服務：存取就會拋，而且會讓整個 client half 掛掉。**
+    我們在 `apply()` 直接讀 `ctx.locale` 想接 App 的語言，結果 entry 啟動失敗、
+    UI 顯示「Failed to load plugins — dsh-general-agentics: failed」。cordis 只保證
+    inject 清單內的服務；其他屬性存取可能拋。規則：任何非 inject 的服務讀取都要包
+    try/catch，且 client half 的任何初始化都不得讓 apply 拋出。驗證方式：每次改
+    client 後用乾淨 profile 開一次頁面，確認沒有 `did not activate`。

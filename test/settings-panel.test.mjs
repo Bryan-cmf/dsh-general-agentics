@@ -22,6 +22,7 @@ import {
 	healthScore,
 	diffDependencies,
 	fetchLatestVersion,
+	normalizeAccent,
 	normalizeWindow,
 	parseQuiet,
 	readState,
@@ -614,4 +615,42 @@ test('buildDiagnostics renders the sections an issue needs', () => {
 	// a usage failure is stated, not omitted
 	const withoutUsage = buildDiagnostics({ status, usage: { ok: false, reason: 'no session store' } })
 	assert.match(withoutUsage, /unavailable: no session store/u)
+})
+
+test('accent normalisation and partial settings updates', async () => {
+	assert.equal(normalizeAccent('teal'), 'teal')
+	assert.equal(normalizeAccent('nope'), 'indigo')
+	assert.equal(normalizeAccent(undefined), 'indigo')
+	// quiet and accent can be updated independently
+	const root = mkdtempSync(join(tmpdir(), 'ga-root13-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.0.0', dependencies: {} }))
+	const state = mkdtempSync(join(tmpdir(), 'ga-state6-'))
+	let mounted
+	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : undefined) }
+	registerStatusEndpoint(scope, { root, cwd: root, stateDir: state, resolve: () => ({ dir: root }), fetchImpl: async () => ({ ok: false }) })
+	const call = async (query, csrf) => {
+		let captured
+		await mounted.handler({ method: 'POST', url: `/api/general-agentics/status?${query}`, headers: { host: 'localhost', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf } }, {
+			writeHead: status => { captured = { status } }, end: body => { captured.body = JSON.parse(body) },
+		})
+		return captured
+	}
+	const get = async () => {
+		let captured
+		await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, {
+			writeHead: () => {}, end: body => { captured = JSON.parse(body) },
+		})
+		return captured
+	}
+	const first = await get()
+	await call('action=settings&quiet=night', first.csrf)
+	const afterQuiet = await get()
+	assert.deepEqual(afterQuiet.settings.quietHours, { from: 22, to: 8 })
+	assert.equal(afterQuiet.settings.accent, 'indigo')
+	assert.equal((await call('action=settings&accent=teal', first.csrf)).body.settings.accent, 'teal')
+	const afterAccent = await get()
+	assert.equal(afterAccent.settings.accent, 'teal')
+	assert.deepEqual(afterAccent.settings.quietHours, { from: 22, to: 8 }, 'accent update must not clear the quiet window')
+	rmSync(root, { recursive: true, force: true })
+	rmSync(state, { recursive: true, force: true })
 })
