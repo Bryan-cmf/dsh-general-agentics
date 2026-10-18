@@ -179,6 +179,7 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 ```bash
 npm test                 # 61 個測試：組合一致性、端點授權、i18n 字典、MCP、面板 payload
 npm run ci               # 與 GitHub Actions 相同的閘門（測試 + 打包演練）
+npm run review           # 10 個對抗式探針（回滾失敗、stale 記錄、去識別化、資源上限…）
 npm run prepublish-check # 再加上 overlay 的 YAML 解析（發佈前自動執行）
 ```
 

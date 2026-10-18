@@ -10,7 +10,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -20,6 +20,7 @@ import {
 	buildStatus,
 	compareSemver,
 	healthScore,
+	redactHome,
 	diffDependencies,
 	fetchLatestVersion,
 	normalizeAccent,
@@ -457,6 +458,8 @@ test('registerStatusEndpoint: preview diffs the manifest without installing', as
 test('registerStatusEndpoint: POST ?action=rollback installs the recorded version', async () => {
 	const root = mkdtempSync(join(tmpdir(), 'ga-root12-'))
 	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '2.0.0', dependencies: {} }))
+	mkdirSync(join(root, 'node_modules', 'dsh-general-agentics'), { recursive: true })
+	writeFileSync(join(root, 'node_modules', 'dsh-general-agentics', 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '2.0.0' }))
 	const state = mkdtempSync(join(tmpdir(), 'ga-state4-'))
 	writeState('update.json', { from: '1.9.0', to: '2.0.0', at: '2026-01-01T00:00:00.000Z' }, state)
 	let mounted
@@ -653,4 +656,109 @@ test('accent normalisation and partial settings updates', async () => {
 	assert.deepEqual(afterAccent.settings.quietHours, { from: 22, to: 8 }, 'accent update must not clear the quiet window')
 	rmSync(root, { recursive: true, force: true })
 	rmSync(state, { recursive: true, force: true })
+})
+
+/** A profile fixture with an installed bundle version, for rollback tests. */
+function rollbackFixture(installedVersion = '2.0.0') {
+	const root = mkdtempSync(join(tmpdir(), 'ga-rb-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: installedVersion, dependencies: {} }))
+	mkdirSync(join(root, 'node_modules', 'dsh-general-agentics'), { recursive: true })
+	writeFileSync(join(root, 'node_modules', 'dsh-general-agentics', 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: installedVersion }))
+	const state = mkdtempSync(join(tmpdir(), 'ga-rbs-'))
+	return { root, state }
+}
+
+async function rollbackCall({ root, state, manager, record }) {
+	writeState('update.json', record, state)
+	let mounted
+	const scope = { get: n => (n === 'webServer' ? { register: o => { mounted = o } } : n === 'pluginManager' ? manager : undefined) }
+	registerStatusEndpoint(scope, { root, cwd: root, stateDir: state, resolve: () => ({ dir: root }), fetchImpl: async () => ({ ok: false }) })
+	const get = () => new Promise(res => mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, { writeHead: () => {}, end: b => res(JSON.parse(b)) }))
+	const first = await get()
+	let code = 0
+	const body = await new Promise(res => mounted.handler({
+		method: 'POST', url: '/api/general-agentics/status?action=rollback',
+		headers: { host: 'localhost', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': first.csrf },
+	}, { writeHead: c => { code = c }, end: b => res(JSON.parse(b)) }))
+	return { code, body }
+}
+
+test('S1: a failed rollback install puts the previous bundle back', async () => {
+	const { root, state } = rollbackFixture('2.0.0')
+	const asked = []
+	const manager = {
+		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
+		installBundle: async spec => {
+			asked.push(spec)
+			if (spec.endsWith('@1.9.0')) throw Object.assign(new Error('registry refused'), { code: 'fetch-failed' })
+			return { application: 'applied' }
+		},
+	}
+	const { code, body } = await rollbackCall({ root, state, manager, record: { from: '1.9.0', to: '2.0.0' } })
+	assert.equal(code, 500)
+	assert.equal(body.code, 'fetch-failed')
+	assert.equal(body.restored, '2.0.0', 'the version that was installed must be restored')
+	assert.deepEqual(asked, ['remove:dsh-general-agentics', 'dsh-general-agentics@1.9.0', 'dsh-general-agentics@2.0.0'])
+	const result = readState('last-result.json', state)
+	assert.equal(result.ok, false, 'a failed rollback is recorded for diagnostics')
+	assert.equal(result.action, 'rollback')
+	rmSync(root, { recursive: true, force: true })
+	rmSync(state, { recursive: true, force: true })
+})
+
+test('S3: a stale rollback record is refused instead of downgrading blind', async () => {
+	const { root, state } = rollbackFixture('2.0.0')
+	const asked = []
+	const manager = {
+		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
+		installBundle: async spec => { asked.push(spec); return { application: 'applied' } },
+	}
+	const { code, body } = await rollbackCall({ root, state, manager, record: { from: '0.0.1', to: '9.9.9' } })
+	assert.equal(code, 409)
+	assert.equal(body.code, 'stale-record')
+	assert.equal(body.recorded, '9.9.9')
+	assert.equal(body.installed, '2.0.0')
+	assert.deepEqual(asked, [], 'nothing may be removed or installed')
+	rmSync(root, { recursive: true, force: true })
+	rmSync(state, { recursive: true, force: true })
+})
+
+test('S2: diagnostics redacts the home directory and the payload path', async () => {
+	const home = '/Users/example'
+	assert.equal(redactHome(`${home}/.dsh/profiles/desktop`, home), '~/.dsh/profiles/desktop')
+	const status = { current: '1.0.0', profile: { dir: '~/.dsh/profiles/desktop', source: 'argv-profile' }, curated: [], prerequisites: [] }
+	const markdown = buildDiagnostics({ status })
+	assert.ok(!markdown.includes(home), 'the report must not contain the home path')
+	assert.match(markdown, /profile:\s+~\/\.dsh/u)
+})
+
+test('S6: usage scanning is bounded and says what it covers', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-cap-'))
+	mkdirSync(join(root, 'ws', 's1'), { recursive: true })
+	writeFileSync(join(root, 'ws', 's1', 'session.v4.jsonl.zstd'), 'x')
+	const big = JSON.stringify({ type: 'tool/call', data: { name: 'bash', arguments: '{}' } })
+	const usage = readUsage({ sessionsRoot: root, maxBytes: 10, decompress: () => Buffer.from(big) })
+	assert.equal(usage.ok, true)
+	assert.equal(usage.scope, 'all-workspaces')
+	assert.equal(usage.sessions, 1, 'the first file still counts')
+	// a second call with a tiny budget and two files must skip the rest
+	mkdirSync(join(root, 'ws', 's2'), { recursive: true })
+	writeFileSync(join(root, 'ws', 's2', 'session.v4.jsonl.zstd'), 'x')
+	const capped = readUsage({ sessionsRoot: root, maxBytes: 5, decompress: () => Buffer.from(big) })
+	assert.ok(capped.skipped >= 1)
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('S9: the i18n test covers template keys like accent_${key}', () => {
+	const source = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+	const start = source.indexOf('/* GA_I18N_START */')
+	const end = source.indexOf('/* GA_I18N_END */')
+	const table = new Function(`${source.slice(start, end).replace('/* GA_I18N_START */', '').trim()}\nreturn GA_I18N`)()
+	const keys = new Set(Object.keys(table.zh))
+	// prefixes used through template literals
+	for (const match of source.matchAll(/\bt[f]?\(`([a-z]+_)\$\{/gu)) {
+		const prefix = match[1]
+		const expanded = [...keys].filter(key => key.startsWith(prefix))
+		assert.ok(expanded.length > 0, `template key prefix ${prefix} has no dictionary entries`)
+	}
 })

@@ -6,6 +6,18 @@ dependency ranges that the profile's package manager resolves.
 
 ## 0.2.0-alpha.25 (unreleased)
 
+- **Review loop**: `npm run review` runs ten adversarial probes (rollback restore,
+  stale record, redaction, disposer, locale, preview gating, badge refresh, usage
+  bounds, failure recording, badge fallback); process and severity rubric in
+  `docs/review-loop.md`, findings ledger in `docs/review-findings.md`.
+- **Fixes from the first audit (S1–S10)**: a failed rollback restores the previous
+  version; a stale rollback record is refused with 409; diagnostics and the status
+  payload redact `$HOME`; accent overrides hand their disposer back; the locale is
+  resolved through `ctx.get('locale')`; usage is byte-bounded and labelled
+  `all-workspaces`; failures are recorded for the next report; confirm is disabled
+  while the preview loads; the i18n test covers template keys; the quiet-hours
+  hint names the server clock and the sidebar dot refreshes after a settings write.
+
 - **Update preview (A1)**: before installing, the panel asks the registry for the
   target manifest and shows exactly which dependency ranges move
   (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
