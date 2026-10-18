@@ -239,3 +239,15 @@
     title 變動 → observer → 再賦值 → 無限迴圈。實際症狀：瀏覽器 22 個進程、800% CPU、
     頁面永遠載不完。規則：每一次 `document.title = …` 之前都要比較目前值；並用探針
     把這個約束固定下來（P15）。
+
+31. **pnpm 11 的 `minimumReleaseAge` 會擋下「剛發佈」的版本。**
+    桌面更新時，`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` 把剛發佈 30 分鐘的
+    alpha.27 判為不可信（預設 24h）。本機由自己發佈、確定可信時，用
+    `--config.minimumReleaseAge=0` 只放寬該次安裝；不要關掉全域策略。
+
+32. **pnpm 只把「直接依賴」連結到根 `node_modules`。**
+    App 的安裝器把 bundle 的傳遞依賴（如 `dsh-comments`）放成根層的實體目錄；
+    `pnpm update` 只更新 `.pnpm` 與鎖檔，根層目錄不會跟著換。更新這類插件後要
+    確認根層版本，必要時從 `.pnpm/<pkg>@<ver>/node_modules/<pkg>` 複製回去。
+    真正的長久修法是提高 bundle 的 floor（本 repo `dependencies.dsh-comments`
+    已改 `^0.5.7`），讓下一次 bundle 安裝把它一起帶上。
