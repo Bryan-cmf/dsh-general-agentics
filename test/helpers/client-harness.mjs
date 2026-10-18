@@ -246,6 +246,20 @@ export function findButton(node, label) {
 	return out[0]
 }
 
+/** First input whose aria-label or placeholder matches. */
+export function findInput(node, label) {
+	const out = []
+	const walk = current => {
+		if (current === null || current === undefined || typeof current !== 'object') return
+		if (Array.isArray(current)) { current.forEach(walk); return }
+		const props = current.props ?? {}
+		if (current.type === 'input' && (props['aria-label'] === label || String(props.placeholder ?? '').includes(label))) out.push(current)
+		walk(current.children)
+	}
+	walk(node)
+	return out[0]
+}
+
 export function findLink(node, prefix) {
 	const out = []
 	const walk = current => {

@@ -142,7 +142,10 @@ await probe('P6', 'A1 preview', 'confirm is disabled while the preview is loadin
 await probe('P7', 'A3 quiet hours', 'the badge re-reads after a settings write', async () => {
 	assert(/GA_STATUS_EVENT/u.test(CLIENT), 'no refresh event')
 	assert(/addEventListener\(GA_STATUS_EVENT/u.test(CLIENT), 'the badge does not listen for the refresh event')
-	assert((CLIENT.match(/dispatchEvent\(new Event\(GA_STATUS_EVENT\)\)/gu) ?? []).length >= 2, 'settings writes do not dispatch the event')
+	// centralised in writeSettings, which every settings control goes through
+	assert(/writeSettings = async query/u.test(CLIENT), 'no shared settings writer')
+	assert((CLIENT.match(/dispatchEvent\(new Event\(GA_STATUS_EVENT\)\)/gu) ?? []).length >= 1, 'the settings writer does not dispatch the event')
+	assert(/writeSettings\(`quiet=/u.test(CLIENT) && /writeSettings\(`accent=/u.test(CLIENT), 'a settings control bypasses writeSettings')
 	return 'event wired from both settings controls to the badge'
 })
 

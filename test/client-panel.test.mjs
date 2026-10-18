@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createBrowser, createReact, loadClient, textOf, findButton } from './helpers/client-harness.mjs'
+import { createBrowser, createReact, loadClient, textOf, findButton, findInput } from './helpers/client-harness.mjs'
 
 const STATUS = (overrides = {}) => ({
 	current: '0.2.0-alpha.25',
@@ -77,23 +77,71 @@ test('the client half registers the brand slots, the badges and the panel', () =
 	assert.equal(client.pluginBadge !== undefined, true)
 })
 
-test('the panel renders the status-first layout', async () => {
+test('the panel opens on Status and shows the health summary', async () => {
 	const { client, mount, settle } = setup()
 	const view = mount(client.panel)
 	await settle(view)
 	const text = view.text()
-	for (const expected of ['General Agentics', '0.2.0-alpha.25', 'Health & usage', '94 / 100', 'Brand appearance', 'Reminders', 'Copy diagnostics', 'Curated plugins']) {
-		assert.ok(text.includes(expected), `panel is missing "${expected}"\n${text.slice(0, 400)}`)
+	for (const expected of ['General Agentics', '0.2.0-alpha.25', 'Health & usage', '94 / 100', 'Three quick preferences']) {
+		assert.ok(text.includes(expected), `status tab is missing "${expected}"\n${text.slice(0, 400)}`)
 	}
-	assert.ok(text.includes('Three quick preferences'), 'first-run card missing')
-	// two skills in the payload → two Try buttons
-	assert.equal(view.tree.children.length > 0, true)
+	// the plugin list lives on its own tab now
+	assert.ok(!text.includes('Curated plugins'), 'the plugin list should not be on the status tab')
+})
+
+test('the four tabs show their own content', async () => {
+	const { client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const open = async label => {
+		const button = findButton(view.tree, label)
+		assert.ok(button !== undefined, `no ${label} tab`)
+		button.props.onClick()
+		view.render()
+		return view.text()
+	}
+	assert.ok((await open('Plugins')).includes('Curated plugins'))
+	assert.ok((await open('Skills')).includes('Bundled skills'))
+	assert.ok((await open('Settings')).includes('Brand appearance'))
+	assert.ok((await open('Settings')).includes('Reminders'))
+})
+
+test('switching language is live and does not reload the page', async () => {
+	const { browser, client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const zh = findButton(view.tree, '中文')
+	assert.ok(zh !== undefined, 'no language control')
+	zh.props.onClick()
+	view.render()
+	assert.ok(view.text().includes('健康與使用') || view.text().includes('狀態'), 'panel did not re-render in Chinese')
+	assert.equal(browser.reloads.length, 0, 'switching language must not reload')
+	assert.equal(browser.store.get('general-agentics/lang'), 'zh')
+})
+
+test('Esc clears the skills search', async () => {
+	const { client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const skillsTab = findButton(view.tree, 'Skills')
+	skillsTab.props.onClick()
+	view.render()
+	const input = findInput(view.tree, 'Search skills')
+	assert.ok(input !== undefined, 'no skills search input')
+	input.props.onChange({ target: { value: 'brain' } })
+	view.render()
+	assert.ok(view.text().includes('brainstorming'))
+	input.props.onKeyDown({ key: 'Escape' })
+	view.render()
+	assert.ok(!JSON.stringify(view.tree).includes('"brain"'), 'Escape did not clear the query')
 })
 
 test('Try seeds the composer with the skill prompt', async () => {
 	const { browser, client, mount, settle } = setup()
 	const view = mount(client.panel)
 	await settle(view)
+	findButton(view.tree, 'Skills').props.onClick()
+	view.render()
 	const tryButton = findButton(view.tree, 'Try')
 	assert.ok(tryButton !== undefined, 'no Try button rendered')
 	tryButton.props.onClick()

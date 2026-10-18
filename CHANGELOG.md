@@ -4,6 +4,25 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.26 (unreleased)
+
+- **Tabs**: the panel had grown to ten stacked cards; it is now four tabs —
+  Status / Plugins / Skills / Settings — with `role=tablist`/`tab`/`tabpanel`,
+  `aria-selected`, and a sticky header that keeps the version, health and
+  "Check again" visible while scrolling.
+- **One first-run card**: the "what this bundle gives you" card and the
+  preferences wizard were two cards saying overlapping things. They are now one
+  card that sets language, accent and quiet hours and then goes away.
+- **Live language**: switching between 中文 and English re-renders the panel in
+  place — no reload, no lost tab, filter or search state.
+- **Skills tab**: search across skill names and descriptions and a collapsed
+  view (six rows, "Show all 14"), because fourteen full descriptions was a wall
+  of text.
+- **Saved feedback**: settings writes flash a short "Saved" line announced via
+  `aria-live`, and Esc clears the skills search.
+- The i18n coverage test caught a `t('tab_' + tab)` concatenation that made a
+  key invisible to it; the label is now a literal lookup table.
+
 ## 0.2.0-alpha.25 (unreleased)
 
 - **Client tests (S16)**: `test/client-panel.test.mjs` renders the panel, the
