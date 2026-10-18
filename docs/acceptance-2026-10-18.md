@@ -130,3 +130,25 @@
 | 測試 | **74/74** |
 
 功能逐項證據與已知限制見 CHANGELOG 的 alpha.25 段落；B3（Plugins 頁徽章）已實作並如實標記「未目視驗證」，A4／C4 明確延後。
+
+
+## 附錄：0.2.0-alpha.27（面板 UX）
+
+| 檢查 | 結果 |
+|---|---|
+| 安裝 | exit 0、未被閘門拒、`0.2.0-alpha.27`、208 entries、13 條 `ga-` row、0 警告 |
+| 啟動 | HTTP 200、`failed to import 0`（唯一失敗為環境 3443 埠衝突） |
+| payload | curated 13、skills 14、health 94、`profile.dir` 已去識別化（`~/.dsh/...`） |
+| 安全矩陣 | 無 token／錯 token／跨站／外站 Origin 全 403，版本未動 |
+| 面板（瀏覽器） | 版本 alpha.27、四個分頁（Status／Plugins／Skills／Settings）、健康 chip、無殘留骨架 |
+| 分頁內容 | Plugins：清單＋篩選；Skills：搜尋＋6 筆＋Show all 14；Settings：外觀＋提醒 |
+| 語言 | 切換中文/English **不重載**，分頁與狀態保留 |
+| 狀態可見性 | 側欄 footer 顯示「Update available: 0.2.0-alpha.30」；標題變成「● General Agentics」（有更新時） |
+| 測試 | **96/96**（含 12 個 client DOM 測試） |
+| 探針 | **16/16**（含 title 冪等、list-slot 註冊、footer 狀態） |
+
+截圖：`docs/img/panel-tabs-skills.png`、`docs/img/panel-footer-status.png`。
+
+**過程中修掉一個自己造成的 P0**：標題改寫的某個分支無條件賦值 `document.title`，head 的
+observer 因此無限觸發（實測 22 個瀏覽器進程、~800% CPU、頁面永遠載不完）。現在兩處
+title 寫入都先比較再寫，並由探針 P15 固定。
