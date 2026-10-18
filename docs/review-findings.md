@@ -18,7 +18,7 @@
 | S13 | D1 accent | P2 | 換過 accent 後，卸載時清不到「目前那層」（主題的 disposer 認身分） | fixed | 探針 P13；`applyAccent` 先釋放上一層、effect 卸載時釋放當前層 |
 | S14 | A2/C1 | P3 | 還原失敗的細節沒進 `last-result` | fixed | 探針 P11 檢查 `restoreError` 已記錄 |
 | S15 | 循環 | P2 | 探針沒接進 `ci`／`prepublish`，可被繞過 | fixed | `npm run ci` 與 `prepublish-check` 都會跑探針 |
-| S16 | client 半 | P3 | 沒有自動化的 DOM 測試（只有靜態探針＋手動瀏覽器） | accepted | 靜態探針 P4/P6/P7/P10/P13/P14 覆蓋接線；DOM 測試待補 |
+| S16 | client 半 | P3 | 沒有自動化的 DOM 測試（只有靜態探針＋手動瀏覽器） | **fixed** | `test/client-panel.test.mjs`：fake DOM＋迷你 hooks 渲染器，9 個測試（面板版面、Try 塞 prompt、accent／靜默寫入、精靈關閉、複製診斷、側欄小點、插件徽章）；變異測試證明它們抓得到回歸 |
 | S17 | 寫入 | P2 | 並行 update＋rollback 會交錯兩組 remove/install | fixed | 探針 P12；序列化寫入，第二個請求 409 `busy` |
 | S18 | D3 locale | P3 | 語言來源未驗證，無法證明真的走服務 | fixed | 瀏覽器實測 `window.__GA_LOCALE_SOURCE__ = "service"` |
 | S19 | C1 讀取 | P3 | `?diagnostics=1`／`?usage=1` 無授權（現已去識別化） | accepted | 路徑已紅化；未授權可讀到的只剩版本與計數 |

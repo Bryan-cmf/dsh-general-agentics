@@ -6,6 +6,11 @@ dependency ranges that the profile's package manager resolves.
 
 ## 0.2.0-alpha.25 (unreleased)
 
+- **Client tests (S16)**: `test/client-panel.test.mjs` renders the panel, the
+  sidebar dot and the plugin badge through a minimal fake DOM and hooks runtime —
+  nine tests covering the layout, the Try seeding, accent/quiet writes, the
+  first-run card, diagnostics copy and the badge states, with a mutation check to
+  prove they fail when the behaviour changes.
 - **Second audit (S13–S21)**: switching accents disposes the previous theme
   layer; a restore only counts once the version is on disk; failed restores are
   recorded; concurrent writes are serialised (second gets 409 `busy`);

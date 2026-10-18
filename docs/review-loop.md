@@ -7,7 +7,7 @@
 
 | 節奏 | 何時 | 做什麼 | 指令 |
 |---|---|---|---|
-| 每次改動 | commit 前 | 單元測試 ＋ 對抗式探針 | `npm test && npm run review` |
+| 每次改動 | commit 前 | 單元測試（含 client 半的 DOM 測試）＋ 對抗式探針 | `npm test && npm run review` |
 | 每次發佈 | 升版前 | 乾淨 profile 端到端（安裝→組合→啟動→payload→安全矩陣→UI） | 見 `docs/acceptance-*.md` 的檢查表 |
 | 定期審計 | 每週或每個里程碑 | 逐功能重讀實作、重跑探針、更新台账 | `npm run review` ＋ 手動清單 |
 
@@ -51,6 +51,16 @@
 目前 14 個探針覆蓋：回滾失敗還原、stale 記錄拒絕、診斷包去識別化、accent disposer、
 locale 解析、預覽載入中禁止確認、設定變更通知徽章、使用量上限與範圍、失敗紀錄、
 插件徽章降級、還原落地驗證、並行寫入鎖、accent 層釋放、語言來源標記。
+
+## client 半怎麼測
+
+`test/client-panel.test.mjs` 用 `test/helpers/client-harness.mjs`：一個最小 fake DOM
+（document/window/localStorage/fetch、可點擊節點）＋迷你 hooks 渲染器（useState/useEffect，
+可重繪到穩定）。它會載入 `lib/client.js`、呼叫 `apply(ctx)` 取得 slot 註冊的元件，
+再直接掛載面板／徽章斷言畫面與互動——不需要真實瀏覽器，也不需要任何依賴。
+
+變異檢查（證明測試不是空的）：故意把 `skills_try` 由 `Try` 改成 `Go`，對應測試必須失敗；
+還原後必須全綠。這個動作在每次新增 DOM 測試時做一次。
 
 ## 台账
 
