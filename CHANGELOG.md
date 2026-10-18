@@ -10,6 +10,15 @@ dependency ranges that the profile's package manager resolves.
   target manifest and shows exactly which dependency ranges move
   (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
   mode `GET /api/general-agentics/status?preview=1`.
+- **Sidebar update dot (A3)**: a 6px dot on the collapsed sidebar's toggle when an
+  update is available (or something needs attention), with a tooltip naming the
+  version. It is registered only when `globalThis.dshDesktop` is absent, so the
+  desktop app keeps its own app-update indicator in that single slot.
+- **Quiet hours (A3)**: the panel picks a quiet window (off / 22:00-08:00 /
+  09:00-18:00); during it the dot stays hidden. Stored under
+  `${DSH_HOME}/general-agentics/settings.json`, computed on the host so the
+  wrap-around logic is unit-tested. New endpoint mode
+  `POST /status?action=settings&quiet=night`.
 - **One-click rollback (A2)**: every successful update records `from → to` under
   `${DSH_HOME}/general-agentics/update.json`; the panel then offers "Back to
   <version>" (with a confirmation). Rolling back flips the record, so it can be

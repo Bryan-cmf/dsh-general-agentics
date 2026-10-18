@@ -20,11 +20,14 @@ import {
 	compareSemver,
 	diffDependencies,
 	fetchLatestVersion,
+	normalizeWindow,
+	parseQuiet,
 	readState,
 	installedVersion,
 	profileNameFromDir,
 	profileSpecFor,
 	readOwnManifest,
+	quietHoursActive,
 	registerStatusEndpoint,
 	writeState,
 	resolveProfile,
@@ -269,7 +272,10 @@ test('registerStatusEndpoint: POST delegates to the plugin manager when present'
 	}
 	const scope = { get: name => (name === 'webServer' ? { register: o => { mounted = o } } : name === 'pluginManager' ? manager : undefined) }
 	// the panel asks the registry what is current before touching the manager
-	registerStatusEndpoint(scope, { root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
+	// a temp state dir: the success path records the rollback target, and tests
+	// must never write into the real ${DSH_HOME}
+	const state = mkdtempSync(join(tmpdir(), 'ga-state5-'))
+	registerStatusEndpoint(scope, { root, cwd: '/tmp', stateDir: state, fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.4' }) })
 	const captured = await postWithToken(mounted)
 	assert.deepEqual(asked, ['remove:dsh-general-agentics', 'dsh-general-agentics@1.2.4'])
 	assert.equal(captured.status, 200)
@@ -474,4 +480,30 @@ test('registerStatusEndpoint: POST ?action=rollback installs the recorded versio
 	assert.equal(captured.body.code, 'rollback-verify-failed')
 	rmSync(root, { recursive: true, force: true })
 	rmSync(state, { recursive: true, force: true })
+})
+
+test('quiet hours parse and wrap around midnight', () => {
+	assert.deepEqual(parseQuiet('night'), { from: 22, to: 8 })
+	assert.deepEqual(parseQuiet('22-8'), { from: 22, to: 8 })
+	assert.deepEqual(parseQuiet('9-18'), { from: 9, to: 18 })
+	assert.equal(parseQuiet('off'), null)
+	assert.equal(parseQuiet('nonsense'), null)
+	assert.equal(parseQuiet('25-3'), null)
+	const at = hour => new Date(2026, 0, 1, hour, 30, 0)
+	assert.equal(quietHoursActive(parseQuiet('22-8'), at(23)), true)
+	assert.equal(quietHoursActive(parseQuiet('22-8'), at(3)), true)
+	assert.equal(quietHoursActive(parseQuiet('22-8'), at(12)), false)
+	assert.equal(quietHoursActive(parseQuiet('9-18'), at(10)), true)
+	assert.equal(quietHoursActive(parseQuiet('9-18'), at(18)), false)
+	assert.equal(quietHoursActive(null, at(12)), false)
+	assert.equal(quietHoursActive({ from: 7, to: 7 }, at(3)), true)
+})
+
+test('normalizeWindow accepts stored objects, strings and presets', () => {
+	assert.deepEqual(normalizeWindow({ from: 9, to: 18 }), { from: 9, to: 18 })
+	assert.deepEqual(normalizeWindow('22-8'), { from: 22, to: 8 })
+	assert.deepEqual(normalizeWindow('night'), { from: 22, to: 8 })
+	assert.equal(normalizeWindow(null), null)
+	assert.equal(normalizeWindow({ from: 24, to: 3 }), null)
+	assert.equal(normalizeWindow('[object Object]'), null)
 })
