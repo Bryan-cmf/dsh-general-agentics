@@ -110,3 +110,23 @@
 | `npm publish` alpha.24 | 未發佈（需要帳號的瀏覽器授權流程） |
 | `dsh-mobile` 埠衝突 | 環境性：同機另一個 gateway 佔用 3443 |
 | `@michengai/dsh-agency-agents` | 仍只能以風險豁免安裝（上游 peer 範圍限制） |
+
+
+## 附錄：0.2.0-alpha.25（A/B/C/D 創意功能）
+
+環境同上（DSH 0.2.1-rc.2），全新 profile `ga-final`，安裝本機打包的 alpha.25。
+
+| 檢查 | 結果 |
+|---|---|
+| 安裝 | exit 0、未被閘門拒、`0.2.0-alpha.25` |
+| 組合 | 208 entries、13 條 `ga-` row、**0 警告** |
+| 啟動 | HTTP 200、`failed to import 0`（唯一失敗是環境的 3443 埠衝突） |
+| payload | curated 13、skills 14、skillDetails 15、health `94/100 (A)`、settings `{accent: indigo}` |
+| 安全矩陣 | 無 token／錯 token／跨站／外站 Origin **全 403**，版本未被動到 |
+| `?usage=1` | ok、12 sessions、2,176 tool calls、4 個技能 |
+| `?diagnostics=1` | ok、45 行 Markdown（含 health、插件表、usage 段） |
+| `?preview=1` | ok、target alpha.22、changes 0（本地與該版相依相同）；`&to=0.2.0-alpha.24` 正確回 `manifest-unavailable`（該版未發佈） |
+| 面板（瀏覽器） | 標題 alpha.25、健康 chip `94/100`、外觀卡、首次精靈、提醒卡、14 個 Try、Copy diagnostics、篩選與分組 |
+| 測試 | **74/74** |
+
+功能逐項證據與已知限制見 CHANGELOG 的 alpha.25 段落；B3（Plugins 頁徽章）已實作並如實標記「未目視驗證」，A4／C4 明確延後。
