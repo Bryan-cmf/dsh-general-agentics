@@ -63,7 +63,11 @@ const fakeFetch = versions => async url => {
 }
 
 test('resolveProfile prefers the profile path the host passes in argv', () => {
-	const resolved = resolveProfile({ argv: ['node', 'dsh', join(DSH_HOME, 'profiles', 'desktop')], cwd: '/tmp' })
+	// Inject the filesystem answer: on CI there is no $HOME/.dsh/profiles/desktop
+	// (on the maintainer's Mac there is), so reading the real disk made this test
+	// environment-dependent.
+	const target = join(DSH_HOME, 'profiles', 'desktop')
+	const resolved = resolveProfile({ argv: ['node', 'dsh', target], cwd: '/tmp', exists: path => path === target })
 	assert.equal(resolved.name, 'desktop')
 	assert.equal(resolved.dir, join(DSH_HOME, 'profiles', 'desktop'))
 	assert.equal(resolved.source, 'argv-path')
