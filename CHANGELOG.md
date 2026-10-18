@@ -10,6 +10,20 @@ dependency ranges that the profile's package manager resolves.
   target manifest and shows exactly which dependency ranges move
   (`browser-use ^0.6.2 → ^0.7.0`), plus the target's `engines.dsh`. New endpoint
   mode `GET /api/general-agentics/status?preview=1`.
+- **Skills browser (B1)**: the panel lists each bundled skill with its one-line
+  description and a "Try" button that seeds the composer with
+  `Use the "<skill>" skill for this task: `. The host now parses SKILL.md
+  front-matter (`skillDetails` in the status payload) instead of shipping names
+  only.
+- **Capability map (B2)**: each START HERE card on the home surface names the
+  bundled skills it draws on (`Skills: brainstorming · writing-plans …`), so the
+  map from intent to skill is visible before the first message.
+- **Plugin badge (B3)**: `plugins.detail.badge` gets a "GA curated" chip for the
+  plugins this bundle curates. Honest limitation: the headless verification run
+  could not reach the plugin detail pane (the SPA has no `/plugins` route and the
+  sidebar's Plugins button opens Settings), so the badge is implemented and
+  degrades to nothing when the subject is not curated, but it has not been seen
+  rendered yet. Follow-up: confirm in the desktop app.
 - **Sidebar update dot (A3)**: a 6px dot on the collapsed sidebar's toggle when an
   update is available (or something needs attention), with a tooltip naming the
   version. It is registered only when `globalThis.dshDesktop` is absent, so the

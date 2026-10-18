@@ -28,6 +28,7 @@ import {
 	profileSpecFor,
 	readOwnManifest,
 	quietHoursActive,
+	readSkillDetails,
 	registerStatusEndpoint,
 	writeState,
 	resolveProfile,
@@ -506,4 +507,18 @@ test('normalizeWindow accepts stored objects, strings and presets', () => {
 	assert.equal(normalizeWindow(null), null)
 	assert.equal(normalizeWindow({ from: 24, to: 3 }), null)
 	assert.equal(normalizeWindow('[object Object]'), null)
+})
+
+test('readSkillDetails reads front-matter and degrades to the folder name', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-skills-'))
+	mkdirSync(join(root, 'skills', 'alpha'), { recursive: true })
+	mkdirSync(join(root, 'skills', 'beta'), { recursive: true })
+	writeFileSync(join(root, 'skills', 'alpha', 'SKILL.md'), '---\nname: alpha-skill\ndescription: "Does the alpha thing."\n---\n\n# Alpha\n')
+	writeFileSync(join(root, 'skills', 'beta', 'SKILL.md'), 'no front matter here\n')
+	const details = readSkillDetails(root)
+	assert.deepEqual(details, [
+		{ name: 'alpha-skill', description: 'Does the alpha thing.' },
+		{ name: 'beta', description: '' },
+	])
+	rmSync(root, { recursive: true, force: true })
 })
