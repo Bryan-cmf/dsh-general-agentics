@@ -762,3 +762,16 @@ test('S9: the i18n test covers template keys like accent_${key}', () => {
 		assert.ok(expanded.length > 0, `template key prefix ${prefix} has no dictionary entries`)
 	}
 })
+
+test('S21: installedVersion reads the disk, not the module cache', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-iv-'))
+	const dir = join(root, 'node_modules', 'some-plugin')
+	mkdirSync(dir, { recursive: true })
+	writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'some-plugin', version: '1.0.0' }))
+	assert.equal(installedVersion('some-plugin', root), '1.0.0')
+	writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'some-plugin', version: '2.0.0' }))
+	assert.equal(installedVersion('some-plugin', root), '2.0.0', 'a swap must be visible in the same process')
+	rmSync(dir, { recursive: true, force: true })
+	assert.equal(installedVersion('some-plugin', root), undefined)
+	rmSync(root, { recursive: true, force: true })
+})

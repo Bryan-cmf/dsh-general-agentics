@@ -21,6 +21,10 @@ console.log('• tests')
 const tests = spawnSync(process.execPath, ['--test', 'test/'], { stdio: 'inherit' })
 if (tests.status !== 0) fail('the test suite failed')
 
+console.log('• adversarial probes')
+const probes = spawnSync(process.execPath, ['scripts/review.mjs'], { stdio: 'inherit' })
+if (probes.status !== 0) fail('the review probes failed')
+
 console.log('• overlay parses as YAML')
 try {
 	const dshHome = process.env.DSH_HOME ?? `${process.env.HOME ?? ''}/.dsh`

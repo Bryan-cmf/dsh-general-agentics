@@ -70,11 +70,13 @@ async function post({ root, state, manager, query, record }) {
 await probe('P1', 'A2 rollback', 'install failure restores the previous version', async () => {
 	const { root, state } = fixture('2.0.0')
 	const asked = []
+	const writeVersion = version => writeFileSync(join(root, 'node_modules', 'dsh-general-agentics', 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version }))
 	const manager = {
 		removeBundle: async name => { asked.push(`remove:${name}`); return { application: 'applied' } },
 		installBundle: async spec => {
 			asked.push(spec)
 			if (spec.endsWith('@1.9.0')) throw Object.assign(new Error('registry refused'), { code: 'fetch-failed' })
+			writeVersion(spec.split('@').at(-1))
 			return { application: 'applied' }
 		},
 	}
@@ -85,7 +87,7 @@ await probe('P1', 'A2 rollback', 'install failure restores the previous version'
 	const recorded = readState('last-result.json', state)
 	assert(recorded?.ok === false, 'the failed rollback must be recorded')
 	rmSync(root, { recursive: true, force: true }); rmSync(state, { recursive: true, force: true })
-	return 'restored 2.0.0 after the failed install'
+	return 'restored 2.0.0 (verified on disk) after the failed install'
 })
 
 // ── A2: a stale record must not downgrade blind ────────────────────────────
@@ -118,8 +120,8 @@ await probe('P3', 'C1 diagnostics', 'the report and the payload redact the home 
 
 // ── D1: the theme override must be disposable ─────────────────────────────
 await probe('P4', 'D1 accents', 'applyAccent hands the disposer back to ctx.effect', async () => {
-	assert(/function applyAccent\(color\)[\s\S]{0,400}?return gaCtx\?\.theme\?\.overrideTokens/u.test(CLIENT), 'applyAccent no longer returns the disposer')
-	assert(/ctx\.effect\(\(\) => overrideAccent\(BRAND_COLOR\)/u.test(CLIENT), 'the effect no longer wraps overrideAccent')
+	assert(/accentDisposer = gaCtx\?\.theme\?\.overrideTokens/u.test(CLIENT) && /return accentDisposer/u.test(CLIENT), 'applyAccent no longer stores and returns the disposer')
+	assert(/ctx\.effect\(\(\) => \{[\s\S]{0,200}?overrideAccent\(BRAND_COLOR\)/u.test(CLIENT), 'the effect no longer wraps overrideAccent')
 	return 'disposer returned and consumed by ctx.effect'
 })
 
@@ -175,6 +177,65 @@ await probe('P10', 'B3 plugin badge', 'the badge has a safe fallback for non-cur
 	assert(/if \(curated === null \|\| curated\.length === 0\) return null/u.test(CLIENT), 'no null fallback before the curated list loads')
 	assert(/if \(typeof id !== 'string'\) return null/u.test(CLIENT), 'no guard for a subject without a name')
 	return 'returns null for empty data and unknown subjects'
+})
+
+// ── S20: "restored" must mean the version is on disk ──────────────────────
+await probe('P11', 'A2 rollback', 'a restore that did not land is reported as a failure', async () => {
+	const { root, state } = fixture('2.0.0')
+	const manager = {
+		removeBundle: async () => { rmSync(join(root, 'node_modules', 'dsh-general-agentics'), { recursive: true, force: true }); return { application: 'applied' } },
+		installBundle: async spec => { if (spec.endsWith('@1.9.0')) throw new Error('refused'); return { application: 'applied' } },
+	}
+	const { code, body } = await post({ root, state, manager, query: 'action=rollback', record: { from: '1.9.0', to: '2.0.0' } })
+	assert(code === 500, `expected 500, got ${code}`)
+	assert(body.restored === undefined, `must not claim a restore, got ${body.restored}`)
+	assert(typeof body.restoreError === 'string' && body.restoreError.length > 0, 'the failed restore must explain itself')
+	const recorded = readState('last-result.json', state)
+	assert(recorded?.restoreError !== undefined, 'the failed restore must be recorded')
+	rmSync(root, { recursive: true, force: true }); rmSync(state, { recursive: true, force: true })
+	return 'no false restore claim; failure recorded'
+})
+
+// ── S17: concurrent writes must not interleave ─────────────────────────────
+await probe('P12', 'writes', 'a second concurrent write is refused with 409 busy', async () => {
+	const { root, state } = fixture('2.0.0')
+	let release
+	const gate = new Promise(resolve => { release = resolve })
+	const manager = {
+		removeBundle: async () => { await gate; return { application: 'applied' } },
+		installBundle: async () => ({ application: 'applied' }),
+	}
+	let mounted
+	const scope = { get: n => (n === 'webServer' ? { register: o => { mounted = o } } : n === 'pluginManager' ? manager : undefined) }
+	registerStatusEndpoint(scope, { root, cwd: root, stateDir: state, resolve: () => ({ dir: root }), fetchImpl: async () => ({ ok: true, json: async () => ({ version: '3.0.0' }) }) })
+	const get = () => new Promise(res => mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, { writeHead: () => {}, end: b => res(JSON.parse(b)) }))
+	const first = await get()
+	const call = () => new Promise(res => {
+		let code = 0
+		mounted.handler({ method: 'POST', url: '/api/general-agentics/status', headers: { host: 'localhost', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': first.csrf } }, { writeHead: c => { code = c }, end: b => res({ code, body: JSON.parse(b) }) })
+	})
+	const firstCall = call()
+	await new Promise(resolve => setTimeout(resolve, 30))
+	const second = await call()
+	release()
+	await firstCall
+	assert(second.code === 409 && second.body.code === 'busy', `expected 409 busy, got ${second.code} ${second.body.code}`)
+	rmSync(root, { recursive: true, force: true }); rmSync(state, { recursive: true, force: true })
+	return 'second write refused instead of interleaving'
+})
+
+// ── S13: the accent layer is disposed by whoever installed it last ─────────
+await probe('P13', 'D1 accents', 'switching accents disposes the previous layer', async () => {
+	assert(/let accentDisposer = null/u.test(CLIENT), 'no disposer holder')
+	assert(/accentDisposer\?\.\(\)\s*\n?\s*accentDisposer = gaCtx/u.test(CLIENT), 'applyAccent does not release the previous layer before installing')
+	assert(/return \(\) => \{\s*accentDisposer\?\.\(\)/u.test(CLIENT), 'the unload effect does not dispose the current layer')
+	return 'previous layer released on switch and on unload'
+})
+
+// ── S18: the locale source is observable ──────────────────────────────────
+await probe('P14', 'D3 locale', 'the language source is observable for verification', async () => {
+	assert(/__GA_LOCALE_SOURCE__/u.test(CLIENT), 'no locale-source marker')
+	return 'window.__GA_LOCALE_SOURCE__ records service vs browser'
 })
 
 const failed = results.filter(item => !item.ok)

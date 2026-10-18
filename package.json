@@ -22,7 +22,7 @@
     "check-dsh-compat": "node scripts/check-dsh-compat.mjs",
     "prepublish-check": "node scripts/prepublish-check.mjs",
     "prepublishOnly": "npm run prepublish-check",
-    "ci": "npm test && npm pack --dry-run",
+    "ci": "npm test && npm run review && npm pack --dry-run",
     "review": "node scripts/review.mjs"
   },
   "files": [

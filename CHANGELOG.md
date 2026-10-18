@@ -6,7 +6,14 @@ dependency ranges that the profile's package manager resolves.
 
 ## 0.2.0-alpha.25 (unreleased)
 
-- **Review loop**: `npm run review` runs ten adversarial probes (rollback restore,
+- **Second audit (S13–S21)**: switching accents disposes the previous theme
+  layer; a restore only counts once the version is on disk; failed restores are
+  recorded; concurrent writes are serialised (second gets 409 `busy`);
+  `installedVersion` reads the file instead of `require` (module cache made a
+  swap invisible); `npm run ci` and `prepublish-check` now run the probes.
+  The language source is observable (`window.__GA_LOCALE_SOURCE__`) and a live
+  run confirmed `service`, i.e. D3 really uses the app's locale.
+- **Review loop**: `npm run review` runs fourteen adversarial probes (rollback restore,
   stale record, redaction, disposer, locale, preview gating, badge refresh, usage
   bounds, failure recording, badge fallback); process and severity rubric in
   `docs/review-loop.md`, findings ledger in `docs/review-findings.md`.

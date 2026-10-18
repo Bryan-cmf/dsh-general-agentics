@@ -15,6 +15,15 @@
 | S8 | A1 預覽 | P3 | 預覽載入中仍可按 Confirm | fixed | 探針 P6 |
 | S9 | i18n 測試 | P3 | 只掃字面 key，模板 key（`accent_${key}`）無覆蓋 | fixed | 測試 `S9: the i18n test covers template keys…` |
 | S10 | A3 靜默 | P3 | 靜默時段用伺服器時間未標明；改設定後徽章要重載才更新 | fixed | 探針 P7；文案標明伺服器時間 |
+| S13 | D1 accent | P2 | 換過 accent 後，卸載時清不到「目前那層」（主題的 disposer 認身分） | fixed | 探針 P13；`applyAccent` 先釋放上一層、effect 卸載時釋放當前層 |
+| S14 | A2/C1 | P3 | 還原失敗的細節沒進 `last-result` | fixed | 探針 P11 檢查 `restoreError` 已記錄 |
+| S15 | 循環 | P2 | 探針沒接進 `ci`／`prepublish`，可被繞過 | fixed | `npm run ci` 與 `prepublish-check` 都會跑探針 |
+| S16 | client 半 | P3 | 沒有自動化的 DOM 測試（只有靜態探針＋手動瀏覽器） | accepted | 靜態探針 P4/P6/P7/P10/P13/P14 覆蓋接線；DOM 測試待補 |
+| S17 | 寫入 | P2 | 並行 update＋rollback 會交錯兩組 remove/install | fixed | 探針 P12；序列化寫入，第二個請求 409 `busy` |
+| S18 | D3 locale | P3 | 語言來源未驗證，無法證明真的走服務 | fixed | 瀏覽器實測 `window.__GA_LOCALE_SOURCE__ = "service"` |
+| S19 | C1 讀取 | P3 | `?diagnostics=1`／`?usage=1` 無授權（現已去識別化） | accepted | 路徑已紅化；未授權可讀到的只剩版本與計數 |
+| S20 | A2 回滾 | P3 | 還原成功只看「沒丟錯」，沒驗證磁碟版本 | fixed | 探針 P11；`installedVersion` 比對通過才回 `restored` |
+| S21 | 版本讀取 | P2 | `installedVersion` 用 `require` → 同 process 換版後仍回舊版本 | fixed | 測試 `S21: installedVersion reads the disk…`；改為直接讀檔 |
 | S11 | B3 徽章 | — | 查無其他 `plugins.detail.badge` 註冊者，覆蓋風險為理論性 | accepted | 仍**未目視驗證**（headless 到不了詳情頁） |
 | S12 | C2 使用洞察 | — | 只計 `skill` 工具呼叫，平台自動觸發不計入 | accepted | 文案已寫「技能使用」；`scope: all-workspaces` |
 
