@@ -6,6 +6,12 @@ dependency ranges that the profile's package manager resolves.
 
 ## 0.2.0-alpha.29 (unreleased)
 
+- **Phone-width controls**: the composer's Optimize control drops its label
+  below 520px (the ✨ and its tooltip remain), and the comments dock's status
+  row keeps only its icons (🏷 ☁ ⤴ ➤). Floors raised to dsh-promptimizer
+  `^0.1.3` and dsh-comments `^0.6.1`.
+
+
 - **Hero hierarchy**: the official hero renders the brand slot and its headline
   in one 26px flex row, so "General Agentics Powered by DeepSeek Harness" read as
   a single long sentence. The brand now sits on its own line and the attribution
