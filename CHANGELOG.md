@@ -4,6 +4,13 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.30 (unreleased)
+
+- **Composer stays one row on a 360px phone**: the optimizer's strength caret is
+  hidden under 420px (measured: the trailing group was 162px against the 135px
+  that fit), so add-files/access-mode and optimize/model/send no longer split
+  into two lines. Floor raised to dsh-promptimizer `^0.1.4`.
+
 ## 0.2.0-alpha.29 (unreleased)
 
 - **Phone-width controls**: the composer's Optimize control drops its label
