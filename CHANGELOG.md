@@ -4,6 +4,16 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.31 (unreleased)
+
+- **The composer toolbar fits one row on phones again.** With the curated
+  plugins' controls the row needs ~373px, so at 360-430px it wrapped into two
+  rows with the second one starting mid-width. Under 460px the Optimize strength
+  caret is hidden (`!important` — its inline `display:flex` beats a plain rule),
+  the Experts chip becomes icon-only (`font-size: 0`; its label is a bare text
+  node), and the row's padding/gaps tighten; under 380px the group gaps tighten
+  further. Measured at 360/390/430px: tools and trailing share one row.
+
 ## 0.2.0-alpha.30 (unreleased)
 
 - **Composer stays one row on a 360px phone**: the optimizer's strength caret is

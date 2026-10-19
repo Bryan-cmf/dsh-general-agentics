@@ -290,3 +290,13 @@ test('the plugin badge registers into the list slot with an id', () => {
 	assert.equal(entry.options.id, 'general-agentics')
 	assert.equal(entry.options.priority, undefined, 'list slots do not take priority')
 })
+
+test('the composer compacts to one row on phone widths', async () => {
+	const { browser, client } = setup()
+	const style = browser.document.head.children.find(node => node.tagName === 'STYLE' && node.attributes['data-ga-composer-compact'] !== undefined)
+	assert.ok(style !== undefined, 'composer compact style was not injected')
+	assert.ok(style.textContent.includes('max-width: 460px'), 'no phone breakpoint')
+	assert.ok(style.textContent.includes('#pmz-strength { display: none !important; }'), 'the caret is not hidden (inline display needs !important)')
+	assert.ok(style.textContent.includes(':has(> div > div > div > #pmz-opt)'), 'the row is not anchored to the optimize button')
+	assert.ok(style.textContent.includes('.aag-btn { font-size: 0;'), 'the Experts label is not collapsed')
+})
