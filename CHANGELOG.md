@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-alpha.3 (unreleased)
+## 0.3.0-alpha.3 (2026-10-21)
 
 - **Taste defaults ride the install (zero boot warnings).** The curated-plugin
   config overrides that used to sit in the bundle's overlay warned on every
