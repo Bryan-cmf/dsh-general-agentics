@@ -251,3 +251,10 @@
     確認根層版本，必要時從 `.pnpm/<pkg>@<ver>/node_modules/<pkg>` 複製回去。
     真正的長久修法是提高 bundle 的 floor（本 repo `dependencies.dsh-comments`
     已改 `^0.5.7`），讓下一次 bundle 安裝把它一起帶上。
+
+33. **跨外掛覆蓋樣式時，`!important` 不是可選項。**
+    面板要收窄外掛的控制項時，我們的 `<style>` 比外掛自己的樣式表**早**載入：
+    - promptimizer 的 caret 被行內 `display:flex` 壓過（規則在但無效）
+    - agency-agents 的 Experts chip 被它自己的 `font-size:13px` 壓過（維持 83px）
+    兩者都要 `!important` 才生效。驗證方式：在瀏覽器讀 `getComputedStyle`，
+    不要只看「規則有寫進去」。
