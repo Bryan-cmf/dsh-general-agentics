@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.3.0-alpha.1 (unreleased)
+
+**The bundle stops carrying third-party plugins.** Since the first release the
+curated set rode along as package.json dependencies; that made every upstream
+release our floor to raise and republish, every upstream major a decision we had
+to make for every user, and the overlay a verbatim copy of eleven plugins' patch
+rows that drifted silently on each of their releases. The design is now what it
+should have been:
+
+- the bundle ships **the front-end design, the 14 skills, the ga-status MCP
+  server and the two first-party plugins** (dsh-comments, dsh-promptimizer)
+- eleven third-party plugins move to a **curated marketplace catalog**
+  (lib/catalog.mjs) rendered in the panel: one-click install, one-click update.
+  An install is the user's own direct row — their plugin's own patch layer
+  activates, and updates are their click, not our release
+- the overlay carries only what the bundle owns; taste defaults for catalog
+  plugins are top-level config overrides targeting THEIR row ids, inert until
+  the plugin is installed
+- the panel's Plugins tab is now two sections — *Included with this bundle* and
+  *Curated marketplace* — with `installed` meaning ACTIVATED (a direct
+  dependency), not "files happen to be on disk"; leftover files from the
+  bundle era surface as a residual note instead of masquerading as installed
+- health: a catalog entry that is not installed is a choice, not a deduction;
+  missing/duplicate checks now apply to the included set only
+- `POST action=plugin&pkg=<name>` backs the buttons: manager.installBundle on a
+  catalog name, version verified from disk, recorded in last-result like every
+  other write
+- dsh-im specifically: install from the catalog and you get 5.2.0 (the major
+  the old floor blocked); the report and the badge no longer call it an update
+  the bundle cannot deliver
+
+Migration for an existing profile: update the bundle, then install what you
+want from the marketplace tab — dsh-im first if you were seeing its errors.
+
+## 0.2.0-alpha.33 (2026-10-20)
+
 ## 0.2.0-alpha.33 (unreleased)
 
 - **Range-aware plugin updates (S22).** A curated plugin's "update available"

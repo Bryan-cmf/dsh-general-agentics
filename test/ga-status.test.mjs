@@ -31,13 +31,14 @@ function makeProfile(manifest) {
 	return dir
 }
 
-const DEP = '@liustack/modlens'
+const DEP = 'dsh-promptimizer'
 const ROOT_FOR_TEST = fileURLToPath(new URL('..', import.meta.url))
 
 test('curatedPlugins lists this bundle\'s dependencies', () => {
+	// Since 0.3.0 the manifest carries only the first-party plugins; the
+	// third-party set moved to the catalog (see lib/catalog.mjs).
 	const curated = curatedPlugins()
-	assert.ok(curated.length >= 11, `expected the curated set, got ${curated.length}`)
-	assert.ok(curated.includes(DEP))
+	assert.deepEqual([...curated].sort(), ['dsh-comments', 'dsh-promptimizer'])
 })
 
 test('listSkills finds the bundled SKILL.md directories', () => {

@@ -12,9 +12,11 @@
  *                                   → pnpm re-resolves, the plugin moves
  *   `pnpm update` in the profile    → everything moves to newest matching
  *
- * So a bundle release only delivers plugin updates to profiles that already
- * have the bundle if it RAISES THE FLOOR of the dependencies it wants to move.
- * This script prints the gap so that decision is deliberate, not accidental.
+ *   Since 0.3.0 the third-party set lives in a CATALOG (lib/catalog.mjs): a
+ *   user installs and updates each one with a click, so updating those is
+ *   just that click. The floors that remain belong to the first-party
+ *   plugins this bundle still ships as dependencies, and the same floor
+ *   rules apply to them. This report keeps both visible side by side.
  *
  * Note on 0.x: `^0.68.1` means `>=0.68.1 <0.69.0`, so caret does NOT admit
  * minor updates below 1.0. Those always need an explicit floor raise, and 0.x
@@ -62,31 +64,35 @@ async function latest(name) {
 	}
 }
 
+const { CATALOG } = await import('../lib/catalog.mjs')
 const rows = []
 for (const [name, range] of Object.entries(manifest.dependencies)) {
 	const published = await latest(name)
-	rows.push({
-		name,
-		range,
-		latest: published,
-		kind: published === undefined ? 'unknown' : bumpKind(range, published),
-	})
+	rows.push({ name, range, latest: published, world: 'bundled', kind: published === undefined ? 'unknown' : bumpKind(range, published) })
+}
+for (const entry of CATALOG) {
+	const published = await latest(entry.name)
+	rows.push({ name: entry.name, range: '(catalog)', latest: published, world: 'catalog', kind: published === undefined ? 'unknown' : 'any' })
 }
 
 if (asJson) {
 	console.log(JSON.stringify(rows, null, 2))
 } else {
-	console.log(`curated plugins: ${rows.length}\n`)
+	console.log(`bundled + catalog: ${rows.length}\n`)
 	console.log('  plugin                              range        latest       gap      what an update would take')
 	for (const row of rows) {
 		const action = row.latest === undefined ? 'registry unreachable'
+			: row.world === 'catalog'
+				? 'one click in the panel (the user owns the row)'
 			: row.kind === 'same' ? 'already current'
 				: admitted(row.range, row.latest)
 					? 'flows to fresh installs; existing profiles need a floor raise'
 					: `raise floor to ^${row.latest}`
 		console.log(`  ${row.name.padEnd(34)} ${row.range.padEnd(12)} ${String(row.latest ?? '?').padEnd(12)} ${row.kind.padEnd(8)} ${action}`)
 	}
-	const movable = rows.filter(row => row.kind !== 'same' && row.kind !== 'unknown')
+	const movable = rows.filter(row => row.world === 'bundled' && row.kind !== 'same' && row.kind !== 'unknown')
 	const majors = rows.filter(row => row.kind === 'major')
-	console.log(`\n  ${movable.length} of ${rows.length} could move; ${majors.length} of those are major (never raised without a deliberate decision)`)
+	const bundledRows = rows.filter(row => row.world === 'bundled')
+	const catalogRows = rows.filter(row => row.world === 'catalog')
+	console.log(`\n  bundled: ${movable.length} of ${bundledRows.length} could move (${majors.length} major); catalog: ${catalogRows.filter(r => r.kind === 'any').length} of ${catalogRows.length} have a newer release one click away`)
 }

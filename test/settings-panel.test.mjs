@@ -205,7 +205,7 @@ test('buildStatus survives an unreachable registry', async () => {
 test('readOwnManifest returns this package, including its curated list', () => {
 	const manifest = readOwnManifest()
 	assert.equal(manifest.name, 'dsh-general-agentics')
-	assert.ok(Object.keys(manifest.dependencies).length >= 11)
+	assert.deepEqual(Object.keys(manifest.dependencies).sort(), ['dsh-comments', 'dsh-promptimizer'])
 })
 
 test('registerStatusEndpoint: GET returns status, unknown methods are rejected', async () => {
@@ -391,9 +391,11 @@ test('buildStatus still answers when the registry is unreachable', async () => {
 	assert.equal(status.current, '1.2.3')
 	assert.equal(status.latest, undefined)
 	assert.equal(status.updateAvailable, false)
-	assert.equal(status.curated.length, 1)
-	assert.equal(status.curated[0].installed, undefined)
-	assert.equal(status.curated[0].latest, undefined)
+	assert.equal(status.curated.length, 12, '1 bundled dependency + 11 catalog entries')
+	const own = status.curated.find(plugin => plugin.name === 'some-plugin')
+	assert.equal(own.included, true)
+	assert.equal(own.installed, undefined)
+	assert.equal(own.latest, undefined)
 	rmSync(root, { recursive: true, force: true })
 })
 
@@ -880,5 +882,55 @@ test('registerStatusEndpoint: diagnostics requires POST with the panel token', a
 	const allowed = await call('POST', '/api/general-agentics/status?diagnostics=1', { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf })
 	assert.equal(allowed.status, 200)
 	assert.ok(String(allowed.body.markdown ?? '').includes('# General Agentics diagnostics'))
+	rmSync(root, { recursive: true, force: true })
+})
+
+
+test('POST action=plugin installs a catalog package through the manager', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-plugin-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const server = { register: options => { mounted = options; return () => {} } }
+	const calls = []
+	const manager = {
+		installBundle: async spec => { calls.push(spec); return { ok: true } },
+		removeBundle: async () => ({ ok: true }),
+	}
+	// The manager "installs" nothing on disk; the verifier must catch that and
+	// still report honestly. For the success path we fake the file below.
+	registerStatusEndpoint({ get: name => (name === 'webServer' ? server : name === 'pluginManager' ? manager : undefined) }, {
+		root,
+		cwd: '/tmp',
+		resolve: () => ({ dir: '/tmp', name: 'plugtest', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.3' }),
+	})
+	const call = async (url, headers) => {
+		let captured
+		await mounted.handler({ method: 'POST', url, headers: headers ?? {} }, {
+			writeHead: status => { captured = { status } },
+			end: body => { captured.body = JSON.parse(body) },
+		})
+		return captured
+	}
+	let csrf
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, {
+		writeHead: () => {},
+		end: body => { csrf = JSON.parse(body).csrf },
+	})
+	const tokenHeaders = { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf }
+
+	// Not in the catalog: refused before the manager is touched.
+	const refused = await call('/api/general-agentics/status?action=plugin&pkg=definitely-not-catalogued', tokenHeaders)
+	assert.equal(refused.status, 400)
+	assert.equal(refused.body.code, 'not-in-catalog')
+	assert.equal(calls.length, 0)
+
+	// In the catalog but the install never landed on disk: honest failure.
+	const missing = await call('/api/general-agentics/status?action=plugin&pkg=dshmarket', tokenHeaders)
+	assert.equal(calls.length, 1, 'the manager was called once')
+	assert.equal(calls[0], 'dshmarket')
+	assert.equal(missing.status, 200)
+	assert.equal(missing.body.ok, true)
+	assert.equal(missing.body.version, undefined, 'a version that is not on disk must not be claimed')
 	rmSync(root, { recursive: true, force: true })
 })

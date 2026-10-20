@@ -336,3 +336,37 @@ test('the layout canaries are exposed for console diagnosis', async () => {
 	assert.equal(typeof diag.heroMatches, 'number', 'no heroMatches canary')
 	assert.equal(typeof diag.compactMatches, 'number', 'no compactMatches canary')
 })
+
+
+test('the marketplace lists catalog entries with one-click install', async () => {
+	const status = STATUS({
+		curated: [
+			{ name: 'dsh-comments', spec: '^0.6.1', installed: '0.6.1', latest: '0.6.1', updateAvailable: false, included: true },
+			{ name: '@xmanrui/dsh-im', included: false, installed: undefined, latest: '5.2.0', updateAvailable: false, category: 'communication', blurb: { zh: 'IM 通知', en: 'IM notifications' }, residual: '4.39.0' },
+			{ name: 'dshmarket', included: false, installed: '1.66.35', latest: '1.66.44', updateAvailable: true, category: 'discovery', blurb: { zh: '插件市場', en: 'The plugin marketplace' } },
+		],
+	})
+	const { browser, client, mount, settle } = setup({ status })
+	const view = mount(client.panel)
+	await settle(view)
+	findButton(view.tree, 'Plugins').props.onClick()
+	view.render()
+	const text = view.text()
+	// two worlds, one list
+	assert.ok(text.includes('Included with this bundle (1)'), 'included section missing')
+	assert.ok(text.includes('Curated marketplace'), 'marketplace section missing')
+	assert.ok(text.includes('Not installed'), 'not-installed badge missing')
+	assert.ok(text.includes('leftover files 4.39.0'), 'residual note missing')
+	// one click posts the token
+	const install = findButton(view.tree, 'Install')
+	assert.ok(install !== undefined, 'no install button')
+	install.props.onClick()
+	await settle(view)
+	const call = browser.posted.find(entry => entry.url.includes('action=plugin'))
+	assert.ok(call !== undefined, 'install never posted')
+	assert.equal(call.options.method, 'POST')
+	assert.equal(call.options.headers?.['x-ga-csrf'], 'csrf-token')
+	assert.ok(call.url.includes(encodeURIComponent('@xmanrui/dsh-im')))
+	// an up-to-date direct install offers no button at all… and an outdated one offers Update
+	assert.ok(findButton(view.tree, 'Update') !== undefined, 'no update button for the outdated direct install')
+})

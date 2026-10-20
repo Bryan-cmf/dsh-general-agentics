@@ -6,19 +6,31 @@
 # Later layers win per row id, and a user patch can always override any row
 # below — that is the upgrade-safety contract of this bundle.
 #
-# What this layer inserts:
-#   1. The bundle's own Loader entry. `dsh-client-modules` discovers browser
-#      bundles by scanning ACTIVE entries — an entry whose package declares
-#      `dsh.client` is what puts lib/client.js into window.__DSH_BOOT__ and
-#      behind /plugins/<id>/client.js. The host half of this same entry
-#      registers the bundled skills provider (office pattern).
-#   2. MCP pre-configuration: one @deepseek-ai/dsh-mcp-client row per server
-#      (same shape as the proven aoci-mcp-bundle). Curated third-party
-#      plugins ride along as package.json dependencies (pnpm installs them
-#      transitively into the profile). Note: the plugin-manager reconcile
-#      step (dsh-plugin-manager operations.js:44) only scans the profile's
-#      OWN top-level dependencies — transitive curated plugins are activated
-#      by explicit `- id:` insert rows in THIS file, not by reconcile.
+# Since 0.3.0 this layer carries ONLY what the bundle owns:
+#   1. The bundle's own Loader entry (`dsh-client-modules` discovers browser
+#      bundles by scanning ACTIVE entries; this row is what puts lib/client.js
+#      into window.__DSH_BOOT__ and behind /plugins/<id>/client.js). The host
+#      half of this same entry registers the bundled skills provider and the
+#      status endpoint.
+#   2. MCP pre-configuration for the ga-status server.
+#   3. Rows for the two FIRST-PARTY plugins shipped as dependencies
+#      (dsh-comments, dsh-promptimizer). Transitive dependencies are not
+#      scanned by the plugin-manager reconcile step (dsh-plugin-manager
+#      operations.js:44), so these still need explicit `- id:` rows.
+#   4. Taste defaults for a few CURATED plugins, as top-level config
+#      overrides targeting THEIR OWN row ids — active only when the user has
+#      installed them from the panel's catalog. (Catalog entries live in
+#      lib/catalog.mjs; installing one is a direct install, which activates
+#      the plugin's own patch layer. Before 0.3.0 this file instead carried
+#      every curated plugin's patch rows verbatim — a copy that drifted
+#      silently on every upstream release, and a floor we had to raise and
+#      republish for each of them. Direct installs need neither.)
+#
+# What deliberately LEFT with the plugins' own patches when they are
+# installed from the catalog:
+#   - modsearch's `- id: web` searchProvider override
+#   - dsh-mobile's five rows, the directory-picker disable and the
+#     question-fixes companion entry
 #
 # ─────────────────────────────────────────────────────────────────────────
 # MEASURED FACTS about this patch dialect (DSH 0.2.0-rc.2, verified 2026-10-13
@@ -36,18 +48,14 @@
 #                    UNRELIABLE — never use a bare relative path.
 #   `--dump-config` does NOT evaluate !!js; it echoes the raw expression. Only
 #   a real activation proves an expression works.
-#   anchorInsertedPluginNames (dsh-app-boot lib/index.js:3536) rewrites a
-#   relative `name:` into a file URL anchored beside the patch, but it never
-#   touches `config.*` — hence the !!js below.
 #
 # ⚠ insert DOES NOT DEDUPE. applyEntryPatches (dsh-app-boot lib/index.js:86-88)
 #   appends unconditionally and buildMap() overwrites the id map silently, so
 #   inserting a row for a plugin the profile already activates directly yields
-#   TWO live rows for the same plugin — no warning. Measured: a duplicate
-#   `- id: general-agentics` insert produced a second row in the composition.
-#   Consequence for curated-plugin rows: a user who already installed one of
-#   them directly must remove that direct install, or the plugin activates
-#   twice. See docs/packaging-and-installation-plan.md §3.4.
+#   TWO live rows for the same plugin — no warning. That is why the two
+#   first-party rows below keep their `ga-` prefixed ids (distinct from the
+#   ids upstream would insert if a user installed them directly), and why the
+#   catalog installs plugins DIRECTLY instead of through this file.
 # ─────────────────────────────────────────────────────────────────────────
 #
 # Brand strategy note: this bundle does NOT disable `ui-brand-official`.
@@ -85,232 +93,35 @@
           - !!js "decodeURIComponent(new URL('node_modules/dsh-general-agentics/mcp/ga-status-server.mjs', baseUrl).pathname)"
 
     # ─────────────────────────────────────────────────────────────────────
-    # 3. Curated third-party plugins.
-    #
-    # ROW IDS ARE PREFIXED `ga-` — deliberately NOT upstream's ids. A user may
-    # already have the same package installed directly, which inserts its own
-    # row; two rows sharing an id break every settings write, because the
-    # config editor verifies with find() (first row by id, dsh-config-editor
-    # lib/index.js:122) while a config override merges into the LAST duplicate.
-    # The write is then rejected with 'Configuration for "X" is overridden by
-    # a home patch or command-line overlay' and nothing can be saved — measured
-    # 2026-10-16 on the maintainer's desktop, which is how the Agency experts
-    # ended up stuck at 0 enabled. Distinct ids keep each id unambiguous.
-    #
-    # Full de-duplication is NOT achievable declaratively: loader entries are
-    # created in tree order, so a row's !!js config cannot see a duplicate that
-    # a later bundle patch inserts (measured: 189 entries existed when our row
-    # was evaluated; the later duplicate was absent). A user who already has a
-    # curated plugin should remove that direct install instead —
-    # docs/ops-lessons.md rule 12.
-    #
-    # Every row below is copied VERBATIM from that package's own
-    # `dsh.bundle.patch` file, read out of the installed tree on 2026-10-13.
-    # Copying is the only option: a bundle cannot make the profile load
-    # another package's patch layer, because reconcile scans only the
-    # profile's OWN top-level dependencies (dsh-plugin-manager
-    # operations.js:44), and `cordis:include` takes an ENTRY list, not a
-    # patch list (dsh-app-boot lib/index.js:3040-3050, :3705-3711), so it
-    # cannot pull one in either.
-    #
-    # Consequence: when a curated plugin edits its own patch file, this copy
-    # drifts silently. `npm test` cannot catch that — re-run the composition
-    # check (docs/packaging-and-installation-plan.md §4.1) on every version
-    # bump of anything listed here.
-    #
-    # Deliberately NOT curated, because their patch layers do more than
-    # insert — which is a product decision, not a packaging one:
-    #   - @liustack/modsearch also overrides `- id: web` with
-    #     `searchProvider: modsearch`, i.e. it hijacks the app's web search
-    #     provider on the user's behalf.
-    #   - dsh-mobile disables the official `directory-picker` row, inserts 5
-    #     rows, and its !!js expressions call a `dshHomePath()` helper whose
-    #     availability in THIS patch's eval scope is unverified.
-    #
-    # EXCLUDED AFTER A FAILED BOOT TEST — dsh-computer-use@0.3.1:
-    #   It hard-depends on `@deepseek-ai/dsh-tools@0.1.2-rc.1` (an exact pin,
-    #   not a peer). Profiles use `nodeLinker: hoisted`, so that copy lands at
-    #   the profile root, the host's version check rejects it against dsh
-    #   0.2.0-rc.2 and DISABLES the `tools` row, and startup then fails with
-    #   "1 required plugin did not activate" — 27 plugins left waiting for the
-    #   tools service, including ours. Reproduced 2026-10-13 by installing the
-    #   packed tarball into a fresh profile: the app never came up.
-    #   The maintainer's own desktop profile survives this only because its
-    #   package.json carries a postinstall script that deletes
-    #   node_modules/@deepseek-ai/dsh-tools after every install. A bundle
-    #   cannot ship that workaround (it is profile config, and an install
-    #   script would break the zero-build-script constraint), so any customer
-    #   installing this bundle with dsh-computer-use in it would get a DSH
-    #   that does not start. Re-admit it only once upstream drops the old pin.
-    #
-    #   GENERAL RULE for every future candidate: a curated plugin must not
-    #   carry a hard `dependencies` entry on any @deepseek-ai/* core package.
-    #   Peers are survivable (profiles set autoInstallPeers: false and the
-    #   shared ~/.dsh/profiles/node_modules layer satisfies them); a pinned
-    #   core dependency is not, because hoisting puts it where the runtime
-    #   version check will find it.
+    # First-party plugins (same maintainer as this bundle), shipped as
+    # package.json dependencies: comments annotates a reply and hands the
+    # annotations back to the agent; promptimizer rewrites the draft prompt
+    # with the currently selected model. Transitive dependencies are not
+    # reconciled (see the header), so each keeps an explicit row. The ids stay
+    # `ga-` prefixed: distinct from the ids upstream would insert on a direct
+    # install, so a user who ALSO installs one directly sees the duplicate
+    # warning in the panel instead of a silent double activation.
     # ─────────────────────────────────────────────────────────────────────
-    - id: ga-modlens
-      name: '@liustack/modlens'
-
-    - id: ga-xmanrui-dsh-im
-      name: '@xmanrui/dsh-im'
-
-    - id: ga-cost-meter
-      name: dsh-cost-meter
-
-    - id: ga-genui
-      name: '@changfenhuang/dsh-genui'
-
-    # Row id is ga- prefixed like every other curated plugin (see the note at
-    # the top): upstream's own patch inserts `- id: better-sidebar` when the
-    # package is installed directly, and two rows sharing an id is what broke
-    # settings writes.
-    #
-    # Upstream's self-deduping guard is kept, with ONE deliberate edit: the id
-    # literal must name THIS row. Left as 'better-sidebar' the guard would match
-    # our own renamed row (same name, different id) and disable it forever.
-    - id: ga-better-sidebar
-      name: 'dsh-better-sidebar'
-      disabled: !!js "[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-better-sidebar' && e.options.id !== 'ga-better-sidebar' && !e.disabled)"
-
-    # dsh-sentinel (BSD-3-Clause, ships its own LICENSE): the scheduled-watch
-    # panel. Copied verbatim from its own patch; the better-sidebar config
-    # below enables the tab that surfaces it.
-    - id: ga-dsh-sentinel
-      name: dsh-sentinel
-
-    - id: ga-dsh-context
-      name: dsh-context
-
-    # Provisions a Python virtualenv (~25MB, needs `uv`) on first use and runs
-    # a browser daemon. Heavy but non-fatal: the row activates either way.
-    - id: ga-dsh-browser-use
-      name: "@ricardochen1996/dsh-browser-use"
-      config:
-        mode: launch
-
-    # NOT curated on dsh >= 0.2.1 — the runtime's installation gate refuses them:
-    #   @michengai/dsh-agency-agents  peers list only 0.1.x dsh versions, so no
-    #                                 published version is installable
-    #   dsh-web-search-pro            every 0.2.x caps at <0.2.1-0; only 0.1.2 passes
-    #                                 (a downgrade, so it stays out)
-    # Users who want them can install manually and accept the risk with
-    #   dsh plugin --profile <p> allow-version <pkg>@<ver> --dsh-version <ver> --accept-risk
-    # Re-add the rows here once upstream publishes a version this dsh accepts.
-
-    # First-party tools (same maintainer as this bundle): comments lets a user
-    # annotate a reply and hand the annotations back to the agent; promptimizer
-    # rewrites the draft prompt with the currently selected model. Both publish
-    # to npm on their own, so the bundle only wires them in.
     - id: ga-comments
       name: dsh-comments
 
     - id: ga-promptimizer
       name: dsh-promptimizer
 
-    - id: ga-dsh-market
-      name: 'dshmarket'
-
-    # ─────────────────────────────────────────────────────────────────────
-    # Curated plugins whose patch layers do more than insert. Added 2026-10-13
-    # on the maintainer's explicit decision; each is a product choice, so the
-    # behaviour it imposes is spelled out here.
-    # ─────────────────────────────────────────────────────────────────────
-
-    # modsearch installs and activates; the TOP-LEVEL `- id: web` override at
-    # the BOTTOM of this file switches the app's search provider to it.
-    # Placing an override row correctly matters: a row nested inside this
-    # `- insert:` list becomes an INSERTED ENTRY (a dead duplicate), not an
-    # override — and because entry lookup keeps the LAST row per id, a later
-    # override would then silently hit the duplicate instead of the real row.
-    # That is exactly the bug this file shipped in 0.2.0-alpha.6..9 (both
-    # override rows were mis-nested inside the insert list).
-    - id: ga-modsearch
-      name: '@liustack/modsearch'
-
-    # ─────────────────────────────────────────────────────────────────────
-    # dsh-mobile. Its four rows follow below; the official `directory-picker`
-    # row is disabled by the TOP-LEVEL override at the bottom of this file,
-    # because the mobile browse pair registers the same `directoryPicker`
-    # service — leaving both live makes cordis throw
-    # 'service "directoryPicker" has been registered' and the official entry
-    # fails to activate (measured 2026-10-13).
-    # ─────────────────────────────────────────────────────────────────────
-    # `disabled: !!js` rows mirror upstream's Windows guards verbatim;
-    # dshHomePath() is provided by the loader (dsh-app-boot lib/index.js:4071).
-    # The gateway starts disabled (initiallyEnabled: false), so installing
-    # this bundle opens no port.
-    - id: directory-picker-mobile-host
-      name: '@deepseek-ai/dsh-host-directory-picker-browse'
-      disabled: !!js ctx.get('desktopRuntime')?.platform === 'win32'
-
-    - id: directory-picker-mobile-surface
-      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
-      disabled: !!js ctx.get('desktopRuntime')?.platform === 'win32'
-
-    - id: ga-mobile-access
-      name: dsh-mobile
-      inject: [webServer, connection]
-      config:
-        setupFile: !!js dshHomePath('mobile-access/setup.json')
-        stateFile: !!js dshHomePath('mobile-access/devices.json')
-        controlFile: !!js dshHomePath('mobile-access/control.json')
-        customCssFile: !!js dshHomePath('mobile-access/mobile.css')
-        customScriptFile: !!js dshHomePath('mobile-access/mobile.js')
-        initiallyEnabled: false
-        listenHost: 127.0.0.1
-        listenPort: 3443
-        allowedCidrs: [127.0.0.0/8]
-        tls:
-          mode: disabled
-
-    # Keep long question titles and answer options in one card scrollport.
-    # dsh-mobile's companion entry. Upstream named it `dsh-mobile-question-fixes`
-    # up to 0.5.x and switched to a path relative to ITS OWN patch file in 0.6.x;
-    # our patch is anchored in our own package directory, so the portable spelling
-    # is the path that walks into the sibling package — valid in both layouts
-    # (verified: dsh-mobile/packages/question-fixes/lib/index.mjs exists in 0.5.5
-    # and 0.6.10).
-    # The companion entry is a path inside the sibling package, which only exists
-    # with the hoisted linker DSH's profiles use. Disable the row when the file is
-    # absent instead of failing to import (an isolated-linker profile, or an
-    # upstream layout change, should degrade to "no UI fixes", not to a boot error).
-    - id: dsh-ui-fixes
-      name: './../dsh-mobile/packages/question-fixes/lib/index.mjs'
-      disabled: !!js "(() => { const fs = process.getBuiltinModule('node:fs'); const path = process.getBuiltinModule('node:path'); const url = process.getBuiltinModule('node:url'); const dir = url.fileURLToPath(baseUrl); return !fs.existsSync(path.join(dir, 'node_modules', 'dsh-mobile', 'packages', 'question-fixes', 'lib', 'index.mjs')) })()"
-
 # ─────────────────────────────────────────────────────────────────────────────
 # TOP-LEVEL OVERRIDE ROWS — patches applied BY ID against the composed tree,
 # NOT new entries. They must sit at column 0, OUTSIDE the `- insert:` list:
 # a row nested inside insert becomes a duplicate entry instead of an override
-# (and shadows later overrides, since id lookup keeps the last row). That
-# mis-nesting is exactly the bug this file shipped in 0.2.0-alpha.6..9.
+# (and shadows later overrides, since id lookup keeps the last row).
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Route the app's web search through modsearch (the maintainer's explicit
-# curation choice; a user's own profile patch layer applies after bundle
-# layers and can pin any provider back). config is replaced WHOLESALE, so
-# fetchProvider is restated to preserve the base value.
-- id: web
-  config:
-    searchProvider: modsearch
-    fetchProvider: http
-
-# Hand the directoryPicker service to dsh-mobile's browse pair (see the
-# dsh-mobile note above); without this the official row and the mobile pair
-# double-register the service and the official entry fails to activate.
-- id: directory-picker
-  name: '@deepseek-ai/dsh-host-directory-picker-auto'
-  disabled: true
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DEFAULT CONFIG — visual parity with the maintainer's deployment. Each row is
-# an override of a row inserted above (or of a base row from dsh-web-app), so a
-# user's own profile patch still wins: profile layers apply after bundle
-# layers. `config` replaces the target's WHOLE config, hence every key that
-# matters is restated. Drop any line here if a default is not wanted.
-# ─────────────────────────────────────────────────────────────────────────────
+# Taste defaults for CURATED plugins the user has installed from the catalog.
+# The ids are the ones the plugins' OWN patches insert when installed directly
+# (verified against each package on 2026-10-20: dsh-context → `dsh-context`,
+# genui → `genui`, better-sidebar → `better-sidebar`). A row whose id is not
+# in the tree is inert, so these apply exactly when the plugin is present.
+# `config` replaces the target's WHOLE config, hence every key that matters
+# is restated; a user's own profile patch layer still wins over all of this.
 
 # Transcript layout + the per-reply usage line (this is what makes
 # dsh-cost-meter visible; without it the plugin runs but shows nothing).
@@ -320,12 +131,12 @@
     performanceUsage: detailed
 
 # Context panel: show the fleet tab.
-- id: ga-dsh-context
+- id: dsh-context
   config:
     fleetTab: show
 
 # GenUI cards section placement + prompt.
-- id: ga-genui
+- id: genui
   config:
     sectionOrder: 80
     sectionName: genui:cards
@@ -334,7 +145,7 @@
 # Sidebar: agent tool buttons + the dsh-sentinel watch tab. tabsEnabled is a
 # dict of tab id → boolean, so listing one tab leaves every OTHER tab on its
 # own default — this adds the sentinel tab, it does not switch anything off.
-- id: ga-better-sidebar
+- id: better-sidebar
   config:
     agentOpenTools: true
     tabsEnabled:

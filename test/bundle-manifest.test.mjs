@@ -113,7 +113,7 @@ test('every single-line !!js expression parses as JavaScript', () => {
 			`unparseable !!js expression: ${line.trim()}`,
 		)
 	}
-	assert.ok(checked >= 3, `expected several !!js guards, checked ${checked}`)
+	assert.ok(checked >= 1, `expected the mcp !!js guard, checked ${checked}`)
 })
 
 test('the panel dictionaries share one key set and cover every used key', () => {
@@ -137,4 +137,22 @@ test('the panel dictionaries share one key set and cover every used key', () => 
 	const missing = [...used].filter(key => !zh.includes(key))
 	assert.deepEqual(missing, [], `keys used but not translated: ${missing.join(', ')}`)
 	assert.ok(used.size > 40, `expected many translated strings, found ${used.size}`)
+})
+
+
+test('the slim 0.3 manifest: only first-party deps, catalog entries carry no rows', async () => {
+	const { CATALOG } = await import('../lib/catalog.mjs')
+	// Everything still in dependencies is first-party…
+	for (const dependency of Object.keys(manifest.dependencies)) {
+		assert.ok(['dsh-comments', 'dsh-promptimizer'].includes(dependency),
+			`${dependency} is a dependency; since 0.3.0 only first-party plugins are`)
+	}
+	// …and nothing from the catalog is.
+	const rows = curatedRows()
+	for (const entry of CATALOG) {
+		const hit = rows.find(row => row.name === entry.name)
+		assert.equal(hit, undefined, `${entry.name} is a catalog entry and must not have a ga- row (direct installs activate their own patch)`)
+	}
+	// Both worlds are covered: catalog ⊎ deps is exactly the panel's list.
+	assert.equal(CATALOG.length + Object.keys(manifest.dependencies).length, 13)
 })
