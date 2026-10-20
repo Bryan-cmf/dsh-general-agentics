@@ -370,3 +370,30 @@ test('the marketplace lists catalog entries with one-click install', async () =>
 	// an up-to-date direct install offers no button at all… and an outdated one offers Update
 	assert.ok(findButton(view.tree, 'Update') !== undefined, 'no update button for the outdated direct install')
 })
+
+
+test('install-all walks the catalog sequentially with progress', async () => {
+	const status = STATUS({
+		curated: [
+			{ name: 'dsh-comments', spec: '^0.6.1', installed: '0.6.1', latest: '0.6.1', updateAvailable: false, included: true },
+			{ name: 'dshmarket', included: false, installed: undefined, latest: '1.66.44', updateAvailable: false, category: 'discovery', blurb: { zh: '市場', en: 'market' } },
+			{ name: 'dsh-sentinel', included: false, installed: undefined, latest: '0.11.1', updateAvailable: false, category: 'automation', blurb: { zh: '哨兵', en: 'sentinel' } },
+			{ name: 'dsh-context', included: false, installed: '0.73.0', latest: '0.73.3', updateAvailable: true, category: 'observation', blurb: { zh: '上下文', en: 'context' } },
+		],
+	})
+	const { browser, client, mount, settle } = setup({ status })
+	const view = mount(client.panel)
+	await settle(view)
+	findButton(view.tree, 'Plugins').props.onClick()
+	view.render()
+	// two not-installed → one button; the outdated direct install gets its own
+	const all = findButton(view.tree, 'Install all (2)')
+	assert.ok(all !== undefined, 'no install-all button')
+	assert.ok(findButton(view.tree, 'Update all (1)') !== undefined, 'no update-all button')
+	all.props.onClick()
+	await settle(view)
+	const pluginPosts = browser.posted.filter(entry => entry.url.includes('action=plugin'))
+	assert.equal(pluginPosts.length, 2, `expected 2 sequential installs, got ${pluginPosts.length}`)
+	assert.ok(pluginPosts.every(entry => entry.options.method === 'POST' && entry.options.headers?.['x-ga-csrf'] === 'csrf-token'))
+	assert.ok(view.text().includes('batch done'), 'no batch summary')
+})

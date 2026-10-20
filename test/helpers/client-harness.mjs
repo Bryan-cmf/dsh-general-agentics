@@ -200,13 +200,21 @@ export function createReact() {
 			},
 			text() { return textOf(view.tree) },
 			unmount() { for (const cleanup of runtime.cleanups) cleanup() },
+			get dirty() { return runtime.dirty },
 		}
 		return view
 	}
 
 	/** Let promise chains started by effects run, then re-render. */
-	const settle = async (view, rounds = 8) => {
-		for (let i = 0; i < rounds; i++) await Promise.resolve()
+	const settle = async (view, rounds = 40) => {
+		// Yield to pending microtasks AND a macrotask per round: async onClick
+		// handlers (fetch → setState chains) resume only when the event loop
+		// turns, and each continuation may dirty the tree again.
+		for (let i = 0; i < rounds; i++) {
+			await Promise.resolve()
+			if (i % 4 === 3) await new Promise(resolve => setTimeout(resolve, 0))
+			if (view.dirty) view.render()
+		}
 		view.render()
 		return view
 	}

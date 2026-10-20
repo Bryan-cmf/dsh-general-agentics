@@ -27,6 +27,11 @@ should have been:
 - `POST action=plugin&pkg=<name>` backs the buttons: manager.installBundle on a
   catalog name, version verified from disk, recorded in last-result like every
   other write
+- **Install all / Update all**: one button over the marketplace section walks
+  the catalog sequentially (the host's write lock would refuse a parallel
+  fan-out anyway), shows `3/11…` progress, tolerates per-plugin failure, and
+  ends with an `ok N, failed M` summary — the "install everything this bundle
+  used to carry" path is one click without putting it in the boot path
 - dsh-im specifically: install from the catalog and you get 5.2.0 (the major
   the old floor blocked); the report and the badge no longer call it an update
   the bundle cannot deliver
