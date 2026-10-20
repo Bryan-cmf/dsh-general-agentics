@@ -38,6 +38,7 @@ import {
 	summarizeUsage,
 	writeState,
 	resolveProfile,
+	specSatisfies,
 	STATUS_ENDPOINT,
 } from '../lib/index.js'
 
@@ -777,5 +778,107 @@ test('S21: installedVersion reads the disk, not the module cache', () => {
 	assert.equal(installedVersion('some-plugin', root), '2.0.0', 'a swap must be visible in the same process')
 	rmSync(dir, { recursive: true, force: true })
 	assert.equal(installedVersion('some-plugin', root), undefined)
+	rmSync(root, { recursive: true, force: true })
+})
+
+
+test('specSatisfies honours caret floors and admits unparsable specs', () => {
+	assert.equal(specSatisfies('4.39.0', '^4.39.0'), true)
+	assert.equal(specSatisfies('4.40.1', '^4.39.0'), true)
+	assert.equal(specSatisfies('5.2.0', '^4.39.0'), false)
+	assert.equal(specSatisfies('0.6.13', '^0.6.11'), true)
+	assert.equal(specSatisfies('0.7.0', '^0.6.2'), false)
+	assert.equal(specSatisfies('0.2.0-alpha.32', '^0.2.0-alpha.27'), true, 'same-tuple prereleases satisfy')
+	assert.equal(specSatisfies('1.2.3', 'latest'), true, 'unparsable spec admits everything')
+	assert.equal(specSatisfies('1.2.3', 'link:/some/path'), true)
+})
+
+test('buildStatus: a newer release outside the declared range is outOfRange, not an update', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-oor-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({
+		name: 'dsh-general-agentics',
+		version: '0.2.0-alpha.32',
+		dependencies: { 'range-plugin': '^4.39.0', 'inrange-plugin': '^1.0.0' },
+	}))
+	const profile = makeProfile('oor', { dependencies: { 'dsh-general-agentics': 'file:./x.tgz' } })
+	for (const [name, version] of [['range-plugin', '4.39.0'], ['inrange-plugin', '1.0.0']]) {
+		mkdirSync(join(profile, 'node_modules', name), { recursive: true })
+		writeFileSync(join(profile, 'node_modules', name, 'package.json'), JSON.stringify({ name, version }))
+	}
+	const status = await buildStatus({
+		root,
+		cwd: '/tmp',
+		includePlugins: true,
+		resolve: () => ({ dir: profile, name: 'oor', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({
+			'dsh-general-agentics': '0.2.0-alpha.32',
+			'range-plugin': '5.2.0',
+			'inrange-plugin': '1.4.0',
+		}),
+	})
+	const byName = Object.fromEntries(status.curated.map(plugin => [plugin.name, plugin]))
+	// S22: the bundle update cannot deliver 5.2.0 under ^4.39.0, so it must not
+	// be advertised as an update — it is an out-of-range flag instead.
+	assert.equal(byName['range-plugin'].updateAvailable, false)
+	assert.equal(byName['range-plugin'].outOfRange, true)
+	assert.equal(byName['range-plugin'].latest, '5.2.0')
+	assert.equal(byName['inrange-plugin'].updateAvailable, true)
+	assert.equal(byName['inrange-plugin'].outOfRange, false)
+	rmSync(root, { recursive: true, force: true })
+	rmSync(profile, { recursive: true, force: true })
+})
+
+test('registerStatusEndpoint: the manual command is redacted without same-origin fetch metadata', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-redact-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const server = { register: options => { mounted = options; return () => {} } }
+	registerStatusEndpoint({ get: name => (name === 'webServer' ? server : undefined) }, {
+		root, cwd: '/tmp', resolve: () => ({ dir: '/tmp', name: 'secret-profile', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.3' }),
+	})
+	const call = async headers => {
+		let captured
+		await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers }, {
+			writeHead: status => { captured = { status } },
+			end: body => { captured.body = JSON.parse(body) },
+		})
+		return captured
+	}
+	// curl without Sec-Fetch-Site: the profile name never leaves the machine.
+	const bare = await call({})
+	assert.match(bare.body.updateCommand, /--profile <profile> add/u)
+	assert.doesNotMatch(bare.body.updateCommand, /secret-profile/u)
+	// The panel's browser always sends Sec-Fetch-Site: same-origin.
+	const panel = await call({ 'sec-fetch-site': 'same-origin' })
+	assert.match(panel.body.updateCommand, /--profile secret-profile add/u)
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('registerStatusEndpoint: diagnostics requires POST with the panel token', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-diag-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const server = { register: options => { mounted = options; return () => {} } }
+	registerStatusEndpoint({ get: name => (name === 'webServer' ? server : undefined) }, {
+		root, cwd: '/tmp', fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.3' }),
+	})
+	const call = async (method, url, headers) => {
+		let captured
+		await mounted.handler({ method, url, headers: headers ?? {} }, {
+			writeHead: status => { captured = { status } },
+			end: body => { captured.body = JSON.parse(body) },
+		})
+		return captured
+	}
+	const viaGet = await call('GET', '/api/general-agentics/status?diagnostics=1')
+	assert.equal(viaGet.body.markdown, undefined)
+	const refused = await call('POST', '/api/general-agentics/status?diagnostics=1', { host: 'localhost:3000', 'sec-fetch-site': 'same-origin' })
+	assert.equal(refused.status, 403)
+	let csrf
+	await call('GET', '/api/general-agentics/status').then(out => { csrf = out.body.csrf })
+	const allowed = await call('POST', '/api/general-agentics/status?diagnostics=1', { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf })
+	assert.equal(allowed.status, 200)
+	assert.ok(String(allowed.body.markdown ?? '').includes('# General Agentics diagnostics'))
 	rmSync(root, { recursive: true, force: true })
 })

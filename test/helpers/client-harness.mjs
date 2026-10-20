@@ -325,5 +325,5 @@ export function loadClient({ browser, react }) {
 	exports.apply(ctx)
 
 	const find = name => registered.find(item => item.options.name === name)?.Component
-	return { exports, registered, effects, themeCalls, panel: find('settings.section'), heroMark: find('conversation.hero.brand.mark'), badge: find('sidebar.toggle.badge'), pluginBadge: find('plugins.detail.badge'), footer: find('sidebar.footer.action'), }
+	return { exports, registered, effects, themeCalls, diag: sandboxWindow.__DSH_GA_DIAG__ ?? null, panel: find('settings.section'), heroMark: find('conversation.hero.brand.mark'), badge: find('sidebar.toggle.badge'), pluginBadge: find('plugins.detail.badge'), footer: find('sidebar.footer.action'), }
 }

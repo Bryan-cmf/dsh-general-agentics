@@ -1,10 +1,35 @@
 # Changelog
 
+## 0.2.0-alpha.33 (unreleased)
+
+- **Range-aware plugin updates (S22).** A curated plugin's "update available"
+  now respects the range this bundle declares: a registry release outside it
+  (dsh-im 5.2.0 under `^4.39.0`, say) is shown as "Newer {v} (out of range)"
+  with the range in the row and a copyable floor-bump command — because the
+  bundle's own update can never deliver it, and installing it directly is what
+  the health card flags as a duplicate. The direct-install button is gone from
+  curated rows; the missing-plugin hint now re-adds the bundle instead of the
+  single plugin, for the same reason.
+- **Diagnostics behind the panel token (S24).** `?diagnostics=1` is a POST
+  carrying `x-ga-csrf` (the report fingerprints the deployment: inventory,
+  versions, prerequisites). A plain GET no longer returns it. The manual
+  update command names the profile only for same-origin readers; curl without
+  fetch metadata gets `--profile <profile>`.
+- **Layout canaries (S25).** `__DSH_GA_DIAG__.heroMatches` and
+  `.compactMatches` count what the two `:has()` selectors actually match, so a
+  hashed-class change upstream shows up as a silent zero instead of a mystery
+  fallback.
+- **`npm run review` prints the upstream freshness report (S26)** — advisory,
+  never a failure: an upstream release is a decision, not a breakage.
+- **CHANGELOG.md ships in the tarball (S28)** and dated entries replace the
+  "(unreleased)" markers that had drifted behind what is actually on npm.
+
+
 Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
-## 0.2.0-alpha.32 (unreleased)
+## 0.2.0-alpha.32 (2026-10-20)
 
 - **The composer compaction actually wins now.** Alpha.31's row rules were
   overridden by stylesheets that load after ours (the Experts chip stayed 83px
@@ -12,7 +37,7 @@ dependency ranges that the profile's package manager resolves.
   The cross-plugin rules carry `!important`; measured at 360/390px: Experts is
   30px and tools/trailing share one row.
 
-## 0.2.0-alpha.31 (unreleased)
+## 0.2.0-alpha.31 (2026-10-20)
 
 - **The composer toolbar fits one row on phones again.** With the curated
   plugins' controls the row needs ~373px, so at 360-430px it wrapped into two
@@ -22,14 +47,14 @@ dependency ranges that the profile's package manager resolves.
   node), and the row's padding/gaps tighten; under 380px the group gaps tighten
   further. Measured at 360/390/430px: tools and trailing share one row.
 
-## 0.2.0-alpha.30 (unreleased)
+## 0.2.0-alpha.30 (2026-10-19)
 
 - **Composer stays one row on a 360px phone**: the optimizer's strength caret is
   hidden under 420px (measured: the trailing group was 162px against the 135px
   that fit), so add-files/access-mode and optimize/model/send no longer split
   into two lines. Floor raised to dsh-promptimizer `^0.1.4`.
 
-## 0.2.0-alpha.29 (unreleased)
+## 0.2.0-alpha.29 (2026-10-19)
 
 - **Phone-width controls**: the composer's Optimize control drops its label
   below 520px (the ✨ and its tooltip remain), and the comments dock's status
@@ -50,14 +75,14 @@ dependency ranges that the profile's package manager resolves.
   plugin detail page rendered, so the GA badge never appeared. Probe P17 now
   refuses a list-slot registration without an id.
 
-## 0.2.0-alpha.28 (unreleased)
+## 0.2.0-alpha.28 (2026-10-18)
 
 - **dsh-comments 0.6.0**: the comments plugin is renamed end to end (data,
   routes, localStorage keys, DOM attributes, logs), with the old marks file and
   keys migrated automatically. This release raises the floor to `^0.6.0` so a
   fresh install gets the renamed plugin rather than the old one.
 
-## 0.2.0-alpha.27 (unreleased)
+## 0.2.0-alpha.27 (2026-10-18)
 
 - **Visible without opening Settings**: a status pill in the sidebar footer
   ("Update available: 0.2.0-alpha.30", or "N need attention") that opens the
@@ -72,7 +97,7 @@ dependency ranges that the profile's package manager resolves.
   show a hover background and a focus outline, and the skills search clears on
   Esc.
 
-## 0.2.0-alpha.26 (unreleased)
+## 0.2.0-alpha.26 (folded into alpha.27 — never published separately)
 
 - **Tabs**: the panel had grown to ten stacked cards; it is now four tabs —
   Status / Plugins / Skills / Settings — with `role=tablist`/`tab`/`tabpanel`,
@@ -91,7 +116,7 @@ dependency ranges that the profile's package manager resolves.
 - The i18n coverage test caught a `t('tab_' + tab)` concatenation that made a
   key invisible to it; the label is now a literal lookup table.
 
-## 0.2.0-alpha.25 (unreleased)
+## 0.2.0-alpha.25 (folded into alpha.27 — never published separately)
 
 - **Client tests (S16)**: `test/client-panel.test.mjs` renders the panel, the
   sidebar dot and the plugin badge through a minimal fake DOM and hooks runtime —

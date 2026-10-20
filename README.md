@@ -179,7 +179,7 @@ DSH 0.2.1 起，安裝時會先讀插件的 manifest 檢查相容性（`dsh-app-
 ```bash
 npm test                 # 61 個測試：組合一致性、端點授權、i18n 字典、MCP、面板 payload
 npm run ci               # 與 GitHub Actions 相同的閘門（測試 + 打包演練）
-npm run review           # 10 個對抗式探針（回滾失敗、stale 記錄、去識別化、資源上限…）
+npm run review           # 對抗式探針（回滾失敗、stale 記錄、去識別化、資源上限…）＋上游新鮮度報告
 npm run prepublish-check # 再加上 overlay 的 YAML 解析（發佈前自動執行）
 ```
 
@@ -196,7 +196,7 @@ npm run prepublish-check # 再加上 overlay 的 YAML 解析（發佈前自動�
 | 需要注意 | 缺外部依賴（附修法）、未提供（附安裝指令）、直裝重複 |
 | 外觀 | 四種品牌 accent（明暗都配好），即時套用並持久化 |
 | 提醒 | 靜默時段（不靜默／22:00–08:00／09:00–18:00）；靜默時側欄小點不出現 |
-| 精選插件 | 依用途分組、篩選、搜尋、可展開詳情（宣告／已裝／registry／落後原因／npm 連結） |
+| 精選插件 | 依用途分組、篩選、搜尋、可展開詳情（宣告／已裝／registry／落後原因／npm 連結）；**範圍感知**：超出 bundle floor 的新版顯示「範圍外」＋一鍵複製 floor 指令，不再建議會造成重複安裝的直裝 |
 | 分頁 | 狀態／插件／技能／設定四頁，標題列 sticky，語言可即時切換不重載，←/→ 可切頁 |
 | 狀態可見性 | 側欄 footer 狀態列與分頁標題的 `●` 提示；靜默時段兩者都不出現 |
 | 技能 | 14 個技能可搜尋、預設收合 6 筆；每筆一句描述與 **Try**（把 `Use the "<skill>" skill for this task:` 塞進輸入框） |

@@ -10,6 +10,7 @@
  *
  * Run: npm run review
  */
+import { spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -265,6 +266,22 @@ await probe('P16', 'slots', 'the sidebar footer entry uses id+order', async () =
 	assert(/name: 'sidebar\.footer\.action', id: 'general-agentics-status', order: -1/u.test(CLIENT), 'footer registered without id/order')
 	return 'list-slot registration uses id + order'
 })
+
+// ── Upstream freshness (advisory, never a failure) ──────────────────────
+// The tool that answers "are our floors behind the registry?". Advisory on
+// purpose: an upstream release must not fail a review; the report is what
+// prompts a human decision (raise the floor, or pin deliberately).
+try {
+	const upstream = spawnSync('node', ['scripts/check-upstream.mjs'], { encoding: 'utf8' })
+	if (upstream.status === 0) {
+		console.log('\n  upstream freshness (advisory)')
+		for (const line of upstream.stdout.split('\n')) if (line.trim() !== '') console.log('  ' + line)
+	} else {
+		console.log('\n  upstream freshness: skipped (' + String(upstream.stderr ?? '').trim().slice(0, 120) + ')')
+	}
+} catch (_error) {
+	console.log('\n  upstream freshness: skipped')
+}
 
 const failed = results.filter(item => !item.ok)
 const width = Math.max(...results.map(item => item.title.length))

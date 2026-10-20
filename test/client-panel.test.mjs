@@ -193,6 +193,9 @@ test('copy diagnostics fetches the report and puts it on the clipboard', async (
 	copy.props.onClick()
 	await settle(view)
 	assert.ok(browser.posted.some(entry => entry.url.includes('diagnostics=1')), 'diagnostics endpoint was not called')
+	const call = browser.posted.find(entry => entry.url.includes('diagnostics=1'))
+	assert.equal(call.options.method, 'POST', 'diagnostics must be a POST now')
+	assert.equal(call.options.headers?.['x-ga-csrf'], 'csrf-token', 'the panel token must travel with it')
 	assert.ok(String(browser.window.clipboardText ?? '').includes('# diag'), `clipboard: ${browser.window.clipboardText}`)
 })
 
@@ -299,4 +302,37 @@ test('the composer compacts to one row on phone widths', async () => {
 	assert.ok(style.textContent.includes('#pmz-strength { display: none !important; }'), 'the caret is not hidden (inline display needs !important)')
 	assert.ok(style.textContent.includes(':has(> div > div > div > #pmz-opt)'), 'the row is not anchored to the optimize button')
 	assert.ok(style.textContent.includes('.aag-btn { font-size: 0 !important;'), 'the Experts label is not collapsed with priority')
+})
+
+
+test('an out-of-range plugin shows the floor hint, never a direct-install button', async () => {
+	const status = STATUS({
+		curated: [
+			{ name: 'dsh-context', spec: '^0.73.0', installed: '0.73.0', latest: '0.73.0', updateAvailable: false },
+			{ name: '@xmanrui/dsh-im', spec: '^4.39.0', installed: '4.39.0', latest: '5.2.0', updateAvailable: false, outOfRange: true },
+		],
+	})
+	const { client, mount, settle } = setup({ status })
+	const view = mount(client.panel)
+	await settle(view)
+	findButton(view.tree, 'Plugins').props.onClick()
+	view.render()
+	const text = view.text()
+	assert.ok(text.includes('Newer 5.2.0 (out of range)'), 'the out-of-range badge is missing')
+	findButton(view.tree, '@xmanrui/dsh-im').props.onClick()
+	view.render()
+	const floor = findButton(view.tree, 'Copy floor bump')
+	assert.ok(floor !== undefined, 'no floor-bump button')
+	assert.ok(view.text().includes('outside the ^4.39.0'), 'the range hint is missing')
+	assert.ok(!view.text().includes('Copy install command'), 'a curated row must not offer a direct install')
+})
+
+test('the layout canaries are exposed for console diagnosis', async () => {
+	const { browser, client, mount, settle } = setup()
+	const view = mount(client.panel)
+	await settle(view)
+	const diag = client.diag
+	assert.ok(diag !== null, 'no __DSH_GA_DIAG__ handle')
+	assert.equal(typeof diag.heroMatches, 'number', 'no heroMatches canary')
+	assert.equal(typeof diag.compactMatches, 'number', 'no compactMatches canary')
 })
