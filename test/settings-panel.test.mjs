@@ -934,3 +934,61 @@ test('POST action=plugin installs a catalog package through the manager', async 
 	assert.equal(missing.body.version, undefined, 'a version that is not on disk must not be claimed')
 	rmSync(root, { recursive: true, force: true })
 })
+
+
+test('POST action=plugin maps a supply-chain refusal to too-fresh, not a fake success', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-fresh-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const server = { register: options => { mounted = options; return () => {} } }
+	const manager = {
+		installBundle: async () => { const error = new Error('ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION: held 5.3.0'); error.code = 'ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION'; throw error },
+		removeBundle: async () => ({ ok: true }),
+	}
+	registerStatusEndpoint({ get: name => (name === 'webServer' ? server : name === 'pluginManager' ? manager : undefined) }, {
+		root, cwd: '/tmp', resolve: () => ({ dir: '/tmp', name: 'fresh', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.3' }),
+	})
+	let csrf
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, {
+		writeHead: () => {}, end: body => { csrf = JSON.parse(body).csrf },
+	})
+	let captured
+	await mounted.handler({
+		method: 'POST', url: '/api/general-agentics/status?action=plugin&pkg=dshmarket&to=1.66.99',
+		headers: { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf },
+	}, { writeHead: status => { captured = { status } }, end: body => { captured.body = JSON.parse(body) } })
+	assert.equal(captured.body.ok, false)
+	assert.equal(captured.body.code, 'too-fresh')
+	rmSync(root, { recursive: true, force: true })
+})
+
+test('POST action=plugin refuses to claim success when a different version landed', async () => {
+	const root = mkdtempSync(join(tmpdir(), 'ga-root-mismatch-'))
+	writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-general-agentics', version: '1.2.3', dependencies: {} }))
+	let mounted
+	const server = { register: options => { mounted = options; return () => {} } }
+	const manager = { installBundle: async () => ({ ok: true }), removeBundle: async () => ({ ok: true }) }
+	const profile = makeProfile('mismatch', { dependencies: { 'dsh-general-agentics': 'file:./x.tgz' } })
+	// dshmarket 1.0.0 is "on disk" but the request asked for 9.9.9
+	mkdirSync(join(profile, 'node_modules', 'dshmarket'), { recursive: true })
+	writeFileSync(join(profile, 'node_modules', 'dshmarket', 'package.json'), JSON.stringify({ name: 'dshmarket', version: '1.0.0' }))
+	registerStatusEndpoint({ get: name => (name === 'webServer' ? server : name === 'pluginManager' ? manager : undefined) }, {
+		root, cwd: '/tmp', resolve: () => ({ dir: profile, name: 'mismatch', source: 'argv-profile' }),
+		fetchImpl: fakeFetch({ 'dsh-general-agentics': '1.2.3' }),
+	})
+	let csrf
+	await mounted.handler({ method: 'GET', url: '/api/general-agentics/status', headers: {} }, {
+		writeHead: () => {}, end: body => { csrf = JSON.parse(body).csrf },
+	})
+	let captured
+	await mounted.handler({
+		method: 'POST', url: '/api/general-agentics/status?action=plugin&pkg=dshmarket&to=9.9.9',
+		headers: { host: 'localhost:3000', 'sec-fetch-site': 'same-origin', 'x-ga-csrf': csrf },
+	}, { writeHead: status => { captured = { status } }, end: body => { captured.body = JSON.parse(body) } })
+	assert.equal(captured.body.ok, false)
+	assert.equal(captured.body.code, 'version-mismatch')
+	assert.equal(captured.body.got, '1.0.0')
+	rmSync(root, { recursive: true, force: true })
+	rmSync(profile, { recursive: true, force: true })
+})
