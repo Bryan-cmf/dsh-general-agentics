@@ -17,14 +17,11 @@
 #      (dsh-comments, dsh-promptimizer). Transitive dependencies are not
 #      scanned by the plugin-manager reconcile step (dsh-plugin-manager
 #      operations.js:44), so these still need explicit `- id:` rows.
-#   4. Taste defaults for a few CURATED plugins, as top-level config
-#      overrides targeting THEIR OWN row ids — active only when the user has
-#      installed them from the panel's catalog. (Catalog entries live in
-#      lib/catalog.mjs; installing one is a direct install, which activates
-#      the plugin's own patch layer. Before 0.3.0 this file instead carried
-#      every curated plugin's patch rows verbatim — a copy that drifted
-#      silently on every upstream release, and a floor we had to raise and
-#      republish for each of them. Direct installs need neither.)
+#   4. Nothing else. Taste defaults for curated plugins do NOT live here: an
+#      override whose target row is absent warns on every boot (measured), and
+#      a catalog plugin's row only exists once the user installs it. They ride
+#      the install instead — see applyTaste() in lib/index.js, which writes the
+#      entry's taste config into the PROFILE's own patch layer.
 #
 # What deliberately LEFT with the plugins' own patches when they are
 # installed from the catalog:
@@ -115,38 +112,18 @@
 # (and shadows later overrides, since id lookup keeps the last row).
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Taste defaults for CURATED plugins the user has installed from the catalog.
-# The ids are the ones the plugins' OWN patches insert when installed directly
-# (verified against each package on 2026-10-20: dsh-context → `dsh-context`,
-# genui → `genui`, better-sidebar → `better-sidebar`). A row whose id is not
-# in the tree is inert, so these apply exactly when the plugin is present.
-# `config` replaces the target's WHOLE config, hence every key that matters
-# is restated; a user's own profile patch layer still wins over all of this.
-
-# Transcript layout + the per-reply usage line (this is what makes
-# dsh-cost-meter visible; without it the plugin runs but shows nothing).
+# The ONE default this bundle imposes on the app itself: the transcript
+# layout + the per-reply usage line (this is what makes a cost meter visible;
+# without it the plugin runs but shows nothing). Curated-plugin taste defaults
+# moved to install time (applyTaste), because an override whose target row is
+# absent warns on every boot.
 - id: ui-chat
   config:
     transcriptView: standard
     performanceUsage: detailed
 
 # Context panel: show the fleet tab.
-- id: dsh-context
-  config:
-    fleetTab: show
-
 # GenUI cards section placement + prompt.
-- id: genui
-  config:
-    sectionOrder: 80
-    sectionName: genui:cards
-    promptEnabled: true
-
 # Sidebar: agent tool buttons + the dsh-sentinel watch tab. tabsEnabled is a
 # dict of tab id → boolean, so listing one tab leaves every OTHER tab on its
 # own default — this adds the sentinel tab, it does not switch anything off.
-- id: better-sidebar
-  config:
-    agentOpenTools: true
-    tabsEnabled:
-      dsh-sentinel:watches: true

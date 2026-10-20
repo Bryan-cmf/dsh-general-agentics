@@ -39,6 +39,7 @@ import {
 	writeState,
 	resolveProfile,
 	specSatisfies,
+	applyTaste,
 	STATUS_ENDPOINT,
 } from '../lib/index.js'
 
@@ -991,4 +992,25 @@ test('POST action=plugin refuses to claim success when a different version lande
 	assert.equal(captured.body.got, '1.0.0')
 	rmSync(root, { recursive: true, force: true })
 	rmSync(profile, { recursive: true, force: true })
+})
+
+
+test('applyTaste writes a profile row once, idempotently, only for tasty entries', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'ga-taste-'))
+	const files = new Map()
+	files.set(join(dir, 'cordis.patch.yml'), '[]\n') // a fresh profile's empty carrier
+	const readFile = path => files.get(path)
+	const writeFile = (path, text) => files.set(path, text)
+	// dsh-context has taste defaults
+	assert.equal(applyTaste('dsh-context', dir, { readFile, writeFile }), true)
+	const written = files.get(join(dir, 'cordis.patch.yml'))
+	assert.ok(!written.includes('[]'), 'the empty carrier must be replaced, not appended to')
+	assert.match(written, /- id: dsh-context\n  config:\n    fleetTab: 'show'/u)
+	// second run does not duplicate
+	assert.equal(applyTaste('dsh-context', dir, { readFile, writeFile }), false)
+	assert.equal((written.match(/- id: dsh-context/gu) ?? []).length, 1)
+	// an entry without taste (dshmarket) writes nothing
+	assert.equal(applyTaste('dshmarket', dir, { readFile, writeFile }), false)
+	assert.equal(files.has(join(dir, 'cordis.patch.yml', )) && files.get(join(dir, 'cordis.patch.yml')) !== written, false)
+	rmSync(dir, { recursive: true, force: true })
 })

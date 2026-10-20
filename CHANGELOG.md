@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0-alpha.3 (unreleased)
+
+- **Taste defaults ride the install (zero boot warnings).** The curated-plugin
+  config overrides that used to sit in the bundle's overlay warned on every
+  boot while their target plugins were absent (measured: `patch: entry
+  "dsh-context" not found` ×3, and `disabled:` does not silence it). They are
+  declared per catalog entry now and written into the PROFILE's own patch layer
+  by the install action itself (`applyTaste`), which also replaces a fresh
+  profile's trailing `[]` carrier instead of appending after it (invalid YAML,
+  measured). Fresh install and post-install boots: 0 warnings.
+- Migration cleanup: the desktop profile's own patch file carried four stale
+  rows targeting the retired `ga-*` ids; removed (backed up first).
+
+## 0.3.0-alpha.2
+
+
 ## 0.3.0-alpha.1 (unreleased)
 
 **The bundle stops carrying third-party plugins.** Since the first release the
