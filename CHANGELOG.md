@@ -4,6 +4,14 @@ Every published version of the bundle. The package is a wiring layer: it ships
 brand, skills and a settings panel itself, and declares the curated plugins as
 dependency ranges that the profile's package manager resolves.
 
+## 0.2.0-alpha.32 (unreleased)
+
+- **The composer compaction actually wins now.** Alpha.31's row rules were
+  overridden by stylesheets that load after ours (the Experts chip stayed 83px
+  because agency-agents sets font-size: 13px), so the toolbar still wrapped.
+  The cross-plugin rules carry `!important`; measured at 360/390px: Experts is
+  30px and tools/trailing share one row.
+
 ## 0.2.0-alpha.31 (unreleased)
 
 - **The composer toolbar fits one row on phones again.** With the curated

@@ -298,5 +298,5 @@ test('the composer compacts to one row on phone widths', async () => {
 	assert.ok(style.textContent.includes('max-width: 460px'), 'no phone breakpoint')
 	assert.ok(style.textContent.includes('#pmz-strength { display: none !important; }'), 'the caret is not hidden (inline display needs !important)')
 	assert.ok(style.textContent.includes(':has(> div > div > div > #pmz-opt)'), 'the row is not anchored to the optimize button')
-	assert.ok(style.textContent.includes('.aag-btn { font-size: 0;'), 'the Experts label is not collapsed')
+	assert.ok(style.textContent.includes('.aag-btn { font-size: 0 !important;'), 'the Experts label is not collapsed with priority')
 })
